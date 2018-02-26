@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+	body {
+		margin: 3%;
+		font-family: sans-serif
+	}
+	div.viapath_logoheader {
+		width: 100%;
+		float: left;
+		margin-bottom: 15px;
+	}
+	div.report_title{
+		text-align: center;
+    	font-size: 18px;
+	}
+	div.report_to{
+		width: 50%;
+		float: left;
+		text-align: left;
+	}
+	div.patient_info{
+		width: 50%;
+		float: right;
+		text-align: left;
+	}
+	div.result_summary{
+		font-weight: bold;
+		width: 98%;
+		margin: 20px 0px;
+		padding: 1%;
+		text-align: left;
+		font-size: 18px;
+		border: 1px solid black;
+		float: left;
+	}
+	div.result_text{
+		width: 100%;
+		text-align: left;
+		font-size: 14px;
+		float: left;
+	}
+</style>
+</head>
+<body>
+	<div class=viapath_logoheader>
+		<img style="max-height: 75px" src="\\gstt.local\shared\Genetics_Data2\Array\Audits and Projects\180216_100K_HTML_report_template\viapathlogo_white.png"/>
+		<table>
+				<tr>
+					<td style="text-align: left; font-weight: bold;">Genetics Laboratories</td>
+				</tr>
+				<tr>
+					<td style="text-align: left;">Guy's Hospital, 5th Floor Tower Wing</td>
+				</tr>
+				<tr>
+					<td style="text-align: left;">Great Maze Pond, London SE1 9RT</td>
+				</tr>
+				<tr>
+						<td style="text-align: left;">TEL: 020-7188-1709</td>
+					</tr>
+			</table>
+	</div>
+	<hr width=100%>
+	<div class=report_title>
+		<h1>100,000 Genomes Project Report</h1>
+	</div>
+	<div class=report_to>
+		<table>
+			<tr>
+				<td style="text-align: left;">Referring Clinician:</td>
+			</tr>
+			<tr>
+				<td style="text-align: left;">{{clinician}}</td>
+			</tr>
+			<tr>
+				<td style="text-align: left;">{{clinician_address}}</td>
+			</tr>
+		</table>
+	</div>
+	<div class=patient_info>
+		<table>
+			<tr>
+				<td style="text-align: left;">Patient Name:</td>
+				<td style="text-align: centre; font-weight: bold;"> {{patient_name}}</td>
+			</tr>
+			<tr>
+				<td style="text-align: left;">Date of Birth:</td>
+				<td style="text-align: centre;">{{DOB}}</td>
+			</tr>
+			<tr>
+				<td style="text-align: left;">Sex:</td>
+				<td style="text-align: centre;">{{sex}}</td>
+			</tr>
+			<tr>
+				<td style="text-align: left;">NHS Number:</td>
+				<td style="text-align: centre;">{{NHSNumber}}</td>
+			</tr>
+			<tr>
+				<td style="text-align: left;">Patient ID:</td>
+				<td style="text-align: centre;">{{PRU}}</td>
+			</tr>
+			<tr>
+				<td style="text-align: left;">Participant ID:</td>
+				<td style="text-align: centre;">{{GELID}}</td>
+			</tr>
+			<tr>
+				<td style="text-align: left;">Interpretation Request ID:</td>
+				<td style="text-align: centre;">OPA{{IRID}}</td>
+			</tr>
+		</table>
+	</div>
+	<div class=result_summary>
+			<u>Result Summary</u>
+			<p>No variant has been identified that is the clear cause of the clinical presentation.</p>
+	</div>
+	<div class=result_text>
+		<p>Please find technical report overleaf.</p>
+		<p>Date created {{date_reported}}</p>
+	</div>
+	</body>
+</html>
