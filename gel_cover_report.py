@@ -64,7 +64,7 @@ def get_moka_demographics(ngs_test_id):
 	# If there is a missing record in an inner joined table, e.g. no clinician address or title, no results will be returned from query.
 	# Check a row has been returned and raise error if not.
 	if not row:
-		sys.exit('No results returned from Moka query for NGSTestID {ngs_test_id}. Check there are records in all inner joined tables.'.format(ngs_test_id=ngs_test_id))
+		sys.exit('No results returned from Moka query for NGSTestID {ngs_test_id}. Check there are records in all inner joined tables (eg clinician stated, clinician address in checker table,),'.format(ngs_test_id=ngs_test_id))
 	# Populate demographics dictionaries with values returned by query
 	demographics = {
 		'clinician': row.clinician_name,
@@ -134,11 +134,11 @@ def main():
 	g = GelReportGenerator(path_to_wkhtmltopdf=r'\\gstt.local\shared\Genetics_Data2\Array\Software\wkhtmltopdf\bin\wkhtmltopdf.exe')
 	# Create the cover pdf
 	g.create_cover_pdf(demographics, r'\\gstt.local\apps\Moka\Files\Software\100K\gel_cover_report_template.html')
-	# Specify the path to the folder containingt he technical reports downloaded from the interpretation portal
+	# Specify the path to the folder containing the technical reports downloaded from the interpretation portal
 	gel_original_report_folder = r'\\gstt.local\shared\Genetics\Bioinformatics\GeL\technical_reports\\'
 	# create a search pattern to identify the correct HTML report. Use single character wildcard as the verison of the report is not known
 	gel_original_report_search_name = "ClinicalReport_{ir_id}-?.pdf".format(ir_id=demographics['IRID'])
-	# Specify the output path for the combined report, based on the GeL participant ID and the intertpretation request ID retrieved from Moka
+	# Specify the output path for the combined report, based on the GeL participant ID and the interpretation request ID retrieved from Moka
 	gel_combined_report = r'\\gstt.local\shared\Genetics\Bioinformatics\GeL\reports_to_send\{pru}_{proband_id}_{ir_id}_{date}.pdf'.format(
 			pru=demographics['PRU'].replace(':', ''),
 			date=datetime.datetime.now().strftime(r'%y%m%d'),
@@ -147,12 +147,8 @@ def main():
 			)
 	# create an empty list to hold all the reports which match the search pattern
 	list_of_html_reports = []
-	# loop through all html reports in folder
-	for file in os.listdir(gel_original_report_folder):
-		# if any match the wildcard pattern
-		if fnmatch.fnmatch(file, gel_original_report_search_name):
-			# append to list
-			list_of_html_reports.append(file)
+	# populate this list with the results of os.listdir which match the search term (created above). 
+	list_of_html_reports = fnmatch.filter(os.listdir(gel_original_report_folder), gel_original_report_search_name)
 	# if there is more than one report for this case
 	if len(list_of_html_reports) > 1:
 		# exit with a statement explaining why
