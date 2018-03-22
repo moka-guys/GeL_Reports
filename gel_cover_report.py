@@ -1,5 +1,5 @@
 """
-v1.0 - AB 2018/02/22
+v1.1 - AJ 2018/03/22
 Requirements:
 	ODBC connection to Moka
 	Python 2.7
@@ -140,7 +140,7 @@ def main():
 	gel_original_report_search_name = "ClinicalReport_{ir_id}-?.pdf".format(ir_id=demographics['IRID'])
 	# Specify the output path for the combined report, based on the GeL participant ID and the interpretation request ID retrieved from Moka
 	gel_combined_report = r'\\gstt.local\shared\Genetics\Bioinformatics\GeL\reports_to_send\{pru}_{proband_id}_{ir_id}_{date}.pdf'.format(
-			pru=demographics['PRU'].replace(':', ''),
+			pru=demographics['PRU'].replace(':', '_'),
 			date=datetime.datetime.now().strftime(r'%y%m%d'),
 			proband_id=demographics['GELID'],
 			ir_id=demographics['IRID']
