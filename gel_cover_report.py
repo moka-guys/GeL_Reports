@@ -46,6 +46,12 @@ class MokaQueryExecuter(object):
 		# return cursor to execute query
 		self.cursor = cnxn.cursor()
 
+	def execute_query(self, sql):
+		"""
+		Executes a supplied SQL query
+		"""
+		self.cursor.execute(sql)
+
 	def get_demographics(self, ngs_test_id):
 		"""
 		Takes a Moka NSGTestID as input.
@@ -173,7 +179,17 @@ def main():
 				# If only one report found create the name of the report using the file identified using the wildcard
 				gel_original_report = os.path.join(gel_original_report_folder, list_of_html_reports[0])
 				# Attach the GeL report to the cover page and output to the output path specified above.
-				g.pdf_merge(gel_combined_report, g.cover_pdf, gel_original_report)				
+				g.pdf_merge(gel_combined_report, g.cover_pdf, gel_original_report)
+				# Update the status for NGSTest
+				ngstest_update_sql = (
+					"UPDATE NGSTest, checker SET NGSTest.check1ID = Checker.Check1ID, NGSTest.Check1Date = '{today_date}', NGSTest.StatusID = 1202218814 "
+					"WHERE checker.username = '{username}' and NGSTestID = {ngs_test_id}"
+					).format(
+						today_date=datetime.datetime.now().strftime(r'%Y%m%d %H:%M:%S %p'), 
+						username=os.getenv('username'), 
+						ngs_test_id=ngs_test_id
+						)
+				moka.execute_query(ngstest_update_sql)
 	# Print output location of reports
 	print '\nGenerated reports can be found in: {gel_report_output_folder}'.format(gel_report_output_folder=gel_report_output_folder)
 		
