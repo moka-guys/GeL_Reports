@@ -61,30 +61,28 @@ def get_moka_demographics(ngs_test_id):
 		).format(ngs_test_id=ngs_test_id)
 	# Execute the query to get patient demographics
 	row = cursor.execute(demographics_sql).fetchone()
-	# If there is a missing record in an inner joined table, e.g. no clinician address or title, no results will be returned from query.
-	# Check a row has been returned and raise error if not.
-	if not row:
-		sys.exit('No results returned from Moka query for NGSTestID {ngs_test_id}. Check there are records in all inner joined tables (eg clinician stated, clinician address in checker table,),'.format(ngs_test_id=ngs_test_id))
-	# Populate demographics dictionaries with values returned by query
-	demographics = {
-		'clinician': row.clinician_name,
-		'clinician_address': row.clinician_address,
-		'patient_name': '{first_name} {last_name}'.format(first_name=row.FirstName, last_name=row.LastName),
-		'sex': row.Gender,
-		'DOB': row.DoB.strftime(r'%d/%m/%Y'), # Extract date from datetime field in format dd/mm/yyyy
-		'NHSNumber': row.NHSNo,
-		'PRU': row.PatientTrustID,
-		'GELID': row.GELProbandID,
-		'IRID': row.IRID,
-		'date_reported': datetime.datetime.now().strftime(r'%d/%m/%Y') # Current date in format dd/mm/yyyy
-	}
-	# If clinician has a title (e.g. Dr.), update the clinician name to include it
-	if row.clinician_title:
-		demographics['clinician'] = '{title} {name}'.format(title=row.clinician_title, name=demographics['clinician'])
-	# If None has been returned for gender (because there isn't one in geneworks) change value to 'Unknown'
-	if not demographics['sex']: 
-		demographics['sex'] = 'Unknown'
-	return demographics
+	# If results have been returned from the query...
+	if row:
+		# Populate demographics dictionaries with values returned by query
+		demographics = {
+			'clinician': row.clinician_name,
+			'clinician_address': row.clinician_address,
+			'patient_name': '{first_name} {last_name}'.format(first_name=row.FirstName, last_name=row.LastName),
+			'sex': row.Gender,
+			'DOB': row.DoB.strftime(r'%d/%m/%Y'), # Extract date from datetime field in format dd/mm/yyyy
+			'NHSNumber': row.NHSNo,
+			'PRU': row.PatientTrustID,
+			'GELID': row.GELProbandID,
+			'IRID': row.IRID,
+			'date_reported': datetime.datetime.now().strftime(r'%d/%m/%Y') # Current date in format dd/mm/yyyy
+		}
+		# If clinician has a title (e.g. Dr.), update the clinician name to include it
+		if row.clinician_title:
+			demographics['clinician'] = '{title} {name}'.format(title=row.clinician_title, name=demographics['clinician'])
+		# If None has been returned for gender (because there isn't one in geneworks) change value to 'Unknown'
+		if not demographics['sex']: 
+			demographics['sex'] = 'Unknown'
+		return demographics
 
 class GelReportGenerator(object):
 	def __init__(self, path_to_wkhtmltopdf):
@@ -130,41 +128,46 @@ def main():
 	args = process_arguments()
 	# Loop through each Moka NGStestID supplied as an argument
 	for ngstestid in args.ngstestid:
-		# Get demographics for cover page from Moka
+		# Get demographics for cover page from Moka.
 		demographics = get_moka_demographics(ngstestid)
-		# Create GelReportGenerator object
-		g = GelReportGenerator(path_to_wkhtmltopdf=r'\\gstt.local\shared\Genetics_Data2\Array\Software\wkhtmltopdf\bin\wkhtmltopdf.exe')
-		# Create the cover pdf
-		g.create_cover_pdf(demographics, r'\\gstt.local\apps\Moka\Files\Software\100K\gel_cover_report_template.html')
-		# Specify the path to the folder containing the technical reports downloaded from the interpretation portal
-		gel_original_report_folder = r'\\gstt.local\shared\Genetics\Bioinformatics\GeL\technical_reports\\'
-		# create a search pattern to identify the correct HTML report. Use single character wildcard as the verison of the report is not known
-		gel_original_report_search_name = "ClinicalReport_{ir_id}-?.pdf".format(ir_id=demographics['IRID'])
-		# Specify the output path for the combined report, based on the GeL participant ID and the interpretation request ID retrieved from Moka
-		gel_combined_report = r'\\gstt.local\shared\Genetics\Bioinformatics\GeL\reports_to_send\{pru}_{proband_id}_{ir_id}_{date}.pdf'.format(
-				pru=demographics['PRU'].replace(':', '_'),
-				date=datetime.datetime.now().strftime(r'%y%m%d'),
-				proband_id=demographics['GELID'],
-				ir_id=demographics['IRID']
-				)
-		# create an empty list to hold all the reports which match the search pattern
-		list_of_html_reports = []
-		# populate this list with the results of os.listdir which match the search term (created above). 
-		list_of_html_reports = fnmatch.filter(os.listdir(gel_original_report_folder), gel_original_report_search_name)
-		# if there is more than one report for this case
-		if len(list_of_html_reports) > 1:
-			# exit with a statement explaining why
-			sys.exit('Multiple ({file_count}) versions of the HTML report exist for IR-ID {ir_id}. Ensure only the correct version exists in S:\Genetics\Bioinformatics\GeL\\technical_reports.'.format(file_count = len(list_of_html_reports), ir_id = demographics['IRID']))
-		elif len(list_of_html_reports) < 1 :
-			# If the original GeL report is not found, print an error message
-			sys.exit('Original GeL report not found. Please ensure it has been saved as PDF with the following filepath: {gel_original_report}'.format(gel_original_report = os.path.join(gel_original_report_folder, gel_original_report_search_name)))
+		# If no demographics are returned, print an error message
+		if not demographics:
+			print 'ERROR: No results returned from Moka query for NGSTestID {ngs_test_id}. Check there are records in all inner joined tables (eg clinician stated, clinician address in checker table,),'.format(ngs_test_id=ngs_test_id)
+		# Otherwise continue...
 		else:
-			# if only one report found create the name of the report using the file identified using the wildcard
-			gel_original_report = os.path.join(gel_original_report_folder, list_of_html_reports[0])
-			# Attach the GeL report to the cover page and output to the output path specified above.
-			g.pdf_merge(gel_combined_report, g.cover_pdf, gel_original_report)
-			# Print output location of file
-			print 'Report has been generated: {gel_combined_report}'.format(gel_combined_report=gel_combined_report)
+			# Create GelReportGenerator object
+			g = GelReportGenerator(path_to_wkhtmltopdf=r'\\gstt.local\shared\Genetics_Data2\Array\Software\wkhtmltopdf\bin\wkhtmltopdf.exe')
+			# Create the cover pdf
+			g.create_cover_pdf(demographics, r'\\gstt.local\apps\Moka\Files\Software\100K\gel_cover_report_template.html')
+			# Specify the path to the folder containing the technical reports downloaded from the interpretation portal
+			gel_original_report_folder = r'\\gstt.local\shared\Genetics\Bioinformatics\GeL\technical_reports\\'
+			# create a search pattern to identify the correct HTML report. Use single character wildcard as the verison of the report is not known
+			gel_original_report_search_name = "ClinicalReport_{ir_id}-?.pdf".format(ir_id=demographics['IRID'])
+			# Specify the output path for the combined report, based on the GeL participant ID and the interpretation request ID retrieved from Moka
+			gel_combined_report = r'\\gstt.local\shared\Genetics\Bioinformatics\GeL\reports_to_send\{pru}_{proband_id}_{ir_id}_{date}.pdf'.format(
+					pru=demographics['PRU'].replace(':', '_'),
+					date=datetime.datetime.now().strftime(r'%y%m%d'),
+					proband_id=demographics['GELID'],
+					ir_id=demographics['IRID']
+					)
+			# create an empty list to hold all the reports which match the search pattern
+			list_of_html_reports = []
+			# populate this list with the results of os.listdir which match the search term (created above). 
+			list_of_html_reports = fnmatch.filter(os.listdir(gel_original_report_folder), gel_original_report_search_name)
+			# if there is more than one report for this case
+			if len(list_of_html_reports) > 1:
+				# exit with a statement explaining why
+				print 'ERROR: Multiple ({file_count}) versions of the HTML report exist for IR-ID {ir_id}. Ensure only the correct version exists in S:\Genetics\Bioinformatics\GeL\\technical_reports.'.format(file_count = len(list_of_html_reports), ir_id = demographics['IRID'])
+			elif len(list_of_html_reports) < 1 :
+				# If the original GeL report is not found, print an error message
+				print 'ERROR: Original GeL report not found. Please ensure it has been saved as PDF with the following filepath: {gel_original_report}'.format(gel_original_report = os.path.join(gel_original_report_folder, gel_original_report_search_name))
+			else:
+				# if only one report found create the name of the report using the file identified using the wildcard
+				gel_original_report = os.path.join(gel_original_report_folder, list_of_html_reports[0])
+				# Attach the GeL report to the cover page and output to the output path specified above.
+				g.pdf_merge(gel_combined_report, g.cover_pdf, gel_original_report)
+				# Print output location of file
+				print 'Report has been generated: {gel_combined_report}'.format(gel_combined_report=gel_combined_report)
 		
 
 if __name__ == '__main__':
