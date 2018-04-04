@@ -125,13 +125,13 @@ class GelReportGenerator(object):
 
 def main():
 	# Output folder for combined reports
-	gel_report_output_folder = r'\\gstt.local\shared\Genetics\Bioinformatics\GeL\reports_to_send\'
+	gel_report_output_folder = r'\\gstt.local\shared\Genetics\Bioinformatics\GeL\reports_to_send'
 	# Get command line arguments
 	args = process_arguments()
 	# Loop through each Moka NGStestID supplied as an argument
-	for ngstestid in args.ngstestid:
+	for ngs_test_id in args.n:
 		# Get demographics for cover page from Moka.
-		demographics = get_moka_demographics(ngstestid)
+		demographics = get_moka_demographics(ngs_test_id)
 		# If no demographics are returned, print an error message
 		if not demographics:
 			print 'ERROR: No results returned from Moka demographics query for NGSTestID {ngs_test_id}. Check there are records in all inner joined tables (eg clinician address in checker table)'.format(ngs_test_id=ngs_test_id)
@@ -142,11 +142,11 @@ def main():
 			# Create the cover pdf
 			g.create_cover_pdf(demographics, r'\\gstt.local\apps\Moka\Files\Software\100K\gel_cover_report_template.html')
 			# Specify the path to the folder containing the technical reports downloaded from the interpretation portal
-			gel_original_report_folder = r'\\gstt.local\shared\Genetics\Bioinformatics\GeL\technical_reports\\'
+			gel_original_report_folder = r'\\gstt.local\shared\Genetics\Bioinformatics\GeL\technical_reports\'
 			# create a search pattern to identify the correct HTML report. Use single character wildcard as the verison of the report is not known
 			gel_original_report_search_name = "ClinicalReport_{ir_id}-?.pdf".format(ir_id=demographics['IRID'])
 			# Specify the output path for the combined report, based on the GeL participant ID and the interpretation request ID retrieved from Moka
-			gel_combined_report = '{gel_report_output_folder}{pru}_{proband_id}_{ir_id}_{date}.pdf'.format(
+			gel_combined_report = r'{gel_report_output_folder}\{pru}_{proband_id}_{ir_id}_{date}.pdf'.format(
 					gel_report_output_folder=gel_report_output_folder,
 					pru=demographics['PRU'].replace(':', '_'),
 					date=datetime.datetime.now().strftime(r'%y%m%d'),
