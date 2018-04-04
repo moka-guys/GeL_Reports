@@ -1,5 +1,5 @@
 """
-v1.1 - AJ 2018/03/22
+v1.2 - AB 2018/04/04
 Requirements:
 	ODBC connection to Moka
 	Python 2.7
@@ -8,14 +8,14 @@ Requirements:
 	PyPDF2
 	jinja2
 
-usage: gel_reports.py [-h] -n NGSTestID
+usage: gel_cover_report.py [-h] -n NGSTestID [NGSTestID ...]
 
 Creates cover page for GeL results and attaches to report provided by GeL
 
 optional arguments:
-  -h, --help			show this help message and exit
-  -n NGSTestID, --ngstestid NGSTestID
-						Moka NGSTestID from NGSTest table
+  -h, --help            show this help message and exit
+  -n NGSTestID [NGSTestID ...], --ngstestid NGSTestID [NGSTestID ...]
+                        Moka NGSTestID from NGSTest table
 """
 import sys
 import os
@@ -34,8 +34,8 @@ def process_arguments():
 	"""
 	# Create ArgumentParser object. Description message will be displayed as part of help message if script is run with -h flag
 	parser = argparse.ArgumentParser(description='Creates cover page for GeL results and attaches to report provided by GeL')
-	# Define the arguments that will be taken. The only argument is an NGSTestID from NGSTest table in Moka
-	parser.add_argument('-n', '--ngstestid', metavar='NGSTestID', required=True, type=int, help='Moka NGSTestID from NGSTest table')
+	# Define the arguments that will be taken. Multiple NGSTestIDs from NGSTest table in Moka can be passed as arguments.
+	parser.add_argument('-n', '--ngstestid', metavar='NGSTestID', required=True, type=int, nargs='+', help='Moka NGSTestID from NGSTest table')
 	# Return the arguments
 	return parser.parse_args()
 
@@ -128,41 +128,42 @@ class GelReportGenerator(object):
 def main():
 	# Get command line arguments
 	args = process_arguments()
-	# Get demographics for cover page from Moka
-	demographics = get_moka_demographics(args.ngstestid)
-	# Create GelReportGenerator object
-	g = GelReportGenerator(path_to_wkhtmltopdf=r'\\gstt.local\shared\Genetics_Data2\Array\Software\wkhtmltopdf\bin\wkhtmltopdf.exe')
-	# Create the cover pdf
-	g.create_cover_pdf(demographics, r'\\gstt.local\apps\Moka\Files\Software\100K\gel_cover_report_template.html')
-	# Specify the path to the folder containing the technical reports downloaded from the interpretation portal
-	gel_original_report_folder = r'\\gstt.local\shared\Genetics\Bioinformatics\GeL\technical_reports\\'
-	# create a search pattern to identify the correct HTML report. Use single character wildcard as the verison of the report is not known
-	gel_original_report_search_name = "ClinicalReport_{ir_id}-?.pdf".format(ir_id=demographics['IRID'])
-	# Specify the output path for the combined report, based on the GeL participant ID and the interpretation request ID retrieved from Moka
-	gel_combined_report = r'\\gstt.local\shared\Genetics\Bioinformatics\GeL\reports_to_send\{pru}_{proband_id}_{ir_id}_{date}.pdf'.format(
-			pru=demographics['PRU'].replace(':', '_'),
-			date=datetime.datetime.now().strftime(r'%y%m%d'),
-			proband_id=demographics['GELID'],
-			ir_id=demographics['IRID']
-			)
-	# create an empty list to hold all the reports which match the search pattern
-	list_of_html_reports = []
-	# populate this list with the results of os.listdir which match the search term (created above). 
-	list_of_html_reports = fnmatch.filter(os.listdir(gel_original_report_folder), gel_original_report_search_name)
-	# if there is more than one report for this case
-	if len(list_of_html_reports) > 1:
-		# exit with a statement explaining why
-		sys.exit('Multiple ({file_count}) versions of the HTML report exist for IR-ID {ir_id}. Ensure only the correct version exists in S:\Genetics\Bioinformatics\GeL\\technical_reports.'.format(file_count = len(list_of_html_reports), ir_id = demographics['IRID']))
-	elif len(list_of_html_reports) < 1 :
-		# If the original GeL report is not found, print an error message
-		sys.exit('Original GeL report not found. Please ensure it has been saved as PDF with the following filepath: {gel_original_report}'.format(gel_original_report = os.path.join(gel_original_report_folder, gel_original_report_search_name)))
-	else:
-		# if only one report found create the name of the report using the file identified using the wildcard
-		gel_original_report = os.path.join(gel_original_report_folder, list_of_html_reports[0])
-		# Attach the GeL report to the cover page and output to the output path specified above.
-		g.pdf_merge(gel_combined_report, g.cover_pdf, gel_original_report)
-		# Print output location of file
-		print 'Report has been generated: {gel_combined_report}'.format(gel_combined_report=gel_combined_report)
+	for ngstestid in args.ngstestid:
+		# Get demographics for cover page from Moka
+		demographics = get_moka_demographics(ngstestid)
+		# Create GelReportGenerator object
+		g = GelReportGenerator(path_to_wkhtmltopdf=r'\\gstt.local\shared\Genetics_Data2\Array\Software\wkhtmltopdf\bin\wkhtmltopdf.exe')
+		# Create the cover pdf
+		g.create_cover_pdf(demographics, r'\\gstt.local\apps\Moka\Files\Software\100K\gel_cover_report_template.html')
+		# Specify the path to the folder containing the technical reports downloaded from the interpretation portal
+		gel_original_report_folder = r'\\gstt.local\shared\Genetics\Bioinformatics\GeL\technical_reports\\'
+		# create a search pattern to identify the correct HTML report. Use single character wildcard as the verison of the report is not known
+		gel_original_report_search_name = "ClinicalReport_{ir_id}-?.pdf".format(ir_id=demographics['IRID'])
+		# Specify the output path for the combined report, based on the GeL participant ID and the interpretation request ID retrieved from Moka
+		gel_combined_report = r'\\gstt.local\shared\Genetics\Bioinformatics\GeL\reports_to_send\{pru}_{proband_id}_{ir_id}_{date}.pdf'.format(
+				pru=demographics['PRU'].replace(':', '_'),
+				date=datetime.datetime.now().strftime(r'%y%m%d'),
+				proband_id=demographics['GELID'],
+				ir_id=demographics['IRID']
+				)
+		# create an empty list to hold all the reports which match the search pattern
+		list_of_html_reports = []
+		# populate this list with the results of os.listdir which match the search term (created above). 
+		list_of_html_reports = fnmatch.filter(os.listdir(gel_original_report_folder), gel_original_report_search_name)
+		# if there is more than one report for this case
+		if len(list_of_html_reports) > 1:
+			# exit with a statement explaining why
+			sys.exit('Multiple ({file_count}) versions of the HTML report exist for IR-ID {ir_id}. Ensure only the correct version exists in S:\Genetics\Bioinformatics\GeL\\technical_reports.'.format(file_count = len(list_of_html_reports), ir_id = demographics['IRID']))
+		elif len(list_of_html_reports) < 1 :
+			# If the original GeL report is not found, print an error message
+			sys.exit('Original GeL report not found. Please ensure it has been saved as PDF with the following filepath: {gel_original_report}'.format(gel_original_report = os.path.join(gel_original_report_folder, gel_original_report_search_name)))
+		else:
+			# if only one report found create the name of the report using the file identified using the wildcard
+			gel_original_report = os.path.join(gel_original_report_folder, list_of_html_reports[0])
+			# Attach the GeL report to the cover page and output to the output path specified above.
+			g.pdf_merge(gel_combined_report, g.cover_pdf, gel_original_report)
+			# Print output location of file
+			print 'Report has been generated: {gel_combined_report}'.format(gel_combined_report=gel_combined_report)
 		
 
 if __name__ == '__main__':
