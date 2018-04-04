@@ -156,10 +156,11 @@ def main():
 			list_of_html_reports = fnmatch.filter(os.listdir(gel_original_report_folder), gel_original_report_search_name)
 			# if there is more than one report for this case
 			if len(list_of_html_reports) > 1:
-				# exit with a statement explaining why
+				# print error message
 				print 'ERROR: Multiple ({file_count}) versions of the HTML report exist for IR-ID {ir_id}. Ensure only the correct version exists in S:\Genetics\Bioinformatics\GeL\\technical_reports.'.format(file_count = len(list_of_html_reports), ir_id = demographics['IRID'])
+			# if the original GeL report is not found, 
 			elif len(list_of_html_reports) < 1 :
-				# If the original GeL report is not found, print an error message
+				# print an error message
 				print 'ERROR: Original GeL report not found. Please ensure it has been saved as PDF with the following filepath: {gel_original_report}'.format(gel_original_report = os.path.join(gel_original_report_folder, gel_original_report_search_name))
 			else:
 				# if only one report found create the name of the report using the file identified using the wildcard
