@@ -132,7 +132,7 @@ def main():
 		demographics = get_moka_demographics(ngstestid)
 		# If no demographics are returned, print an error message
 		if not demographics:
-			print 'ERROR: No results returned from Moka query for NGSTestID {ngs_test_id}. Check there are records in all inner joined tables (eg clinician stated, clinician address in checker table,),'.format(ngs_test_id=ngs_test_id)
+			print 'ERROR: No results returned from Moka demographics query for NGSTestID {ngs_test_id}. Check there are records in all inner joined tables (eg clinician address in checker table)'.format(ngs_test_id=ngs_test_id)
 		# Otherwise continue...
 		else:
 			# Create GelReportGenerator object
@@ -157,11 +157,11 @@ def main():
 			# if there is more than one report for this case
 			if len(list_of_html_reports) > 1:
 				# print error message
-				print 'ERROR: Multiple ({file_count}) versions of the HTML report exist for IR-ID {ir_id}. Ensure only the correct version exists in S:\Genetics\Bioinformatics\GeL\\technical_reports.'.format(file_count = len(list_of_html_reports), ir_id = demographics['IRID'])
+				print 'ERROR: Multiple ({file_count}) versions of the HTML report exist for IR-ID {ir_id}. Ensure only the correct version exists in {gel_original_report_folder}.'.format(file_count=len(list_of_html_reports), ir_id=demographics['IRID'], gel_original_report_folder=gel_original_report_folder)
 			# if the original GeL report is not found, 
-			elif len(list_of_html_reports) < 1 :
+			elif len(list_of_html_reports) < 1:
 				# print an error message
-				print 'ERROR: Original GeL report not found. Please ensure it has been saved as PDF with the following filepath: {gel_original_report}'.format(gel_original_report = os.path.join(gel_original_report_folder, gel_original_report_search_name))
+				print 'ERROR: Original GeL report not found for IR-ID {ir_id}. Please ensure it has been saved as PDF with the following filepath: {gel_original_report}'.format(gel_original_report=os.path.join(gel_original_report_folder, gel_original_report_search_name), ir_id=demographics['IRID'])
 			else:
 				# if only one report found create the name of the report using the file identified using the wildcard
 				gel_original_report = os.path.join(gel_original_report_folder, list_of_html_reports[0])
