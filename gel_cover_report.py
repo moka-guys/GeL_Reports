@@ -128,6 +128,7 @@ class GelReportGenerator(object):
 def main():
 	# Get command line arguments
 	args = process_arguments()
+	# Loop through each Moka NGStestID supplied as an argument
 	for ngstestid in args.ngstestid:
 		# Get demographics for cover page from Moka
 		demographics = get_moka_demographics(ngstestid)
