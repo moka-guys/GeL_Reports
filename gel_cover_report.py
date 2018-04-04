@@ -124,6 +124,8 @@ class GelReportGenerator(object):
 			merger.write(merged_report)
 
 def main():
+	# Output folder for combined reports
+	gel_report_output_folder = r'\\gstt.local\shared\Genetics\Bioinformatics\GeL\reports_to_send\'
 	# Get command line arguments
 	args = process_arguments()
 	# Loop through each Moka NGStestID supplied as an argument
@@ -144,7 +146,8 @@ def main():
 			# create a search pattern to identify the correct HTML report. Use single character wildcard as the verison of the report is not known
 			gel_original_report_search_name = "ClinicalReport_{ir_id}-?.pdf".format(ir_id=demographics['IRID'])
 			# Specify the output path for the combined report, based on the GeL participant ID and the interpretation request ID retrieved from Moka
-			gel_combined_report = r'\\gstt.local\shared\Genetics\Bioinformatics\GeL\reports_to_send\{pru}_{proband_id}_{ir_id}_{date}.pdf'.format(
+			gel_combined_report = '{gel_report_output_folder}{pru}_{proband_id}_{ir_id}_{date}.pdf'.format(
+					gel_report_output_folder=gel_report_output_folder,
 					pru=demographics['PRU'].replace(':', '_'),
 					date=datetime.datetime.now().strftime(r'%y%m%d'),
 					proband_id=demographics['GELID'],
@@ -167,8 +170,8 @@ def main():
 				gel_original_report = os.path.join(gel_original_report_folder, list_of_html_reports[0])
 				# Attach the GeL report to the cover page and output to the output path specified above.
 				g.pdf_merge(gel_combined_report, g.cover_pdf, gel_original_report)
-				# Print output location of file
-				print 'Report has been generated: {gel_combined_report}'.format(gel_combined_report=gel_combined_report)
+	# Print output location of reports
+	print '\nGenerated reports can be found in: {gel_report_output_folder}'.format(gel_report_output_folder=gel_report_output_folder)
 		
 
 if __name__ == '__main__':
