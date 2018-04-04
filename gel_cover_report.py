@@ -39,50 +39,52 @@ def process_arguments():
 	# Return the arguments
 	return parser.parse_args()
 
-def get_moka_demographics(ngs_test_id):
-	"""
-	Takes a Moka NSGTestID as input.
-	Pulls out details from Moka needed to populate the cover page. 
-	"""
-	# establish pyodbc connection to Moka
-	cnxn = pyodbc.connect('DRIVER={SQL Server}; SERVER=GSTTV-MOKA; DATABASE=mokadata;')
-	# cursor to execute query
-	cursor = cnxn.cursor()
-	# SQL to pull out required demographics from Moka for given NGS test ID
-	demographics_sql = (
-		'SELECT NGSTest.NGSTestID, Item_Title.Item AS clinician_title, Checker.Name AS clinician_name, Item_Address.Item AS clinician_address, '
-		'"gwv-patientlinked".FirstName, "gwv-patientlinked".LastName, "gwv-patientlinked".DoB, gw_GenderTable.Gender, "gwv-patientlinked".NHSNo, '
-		'"gwv-patientlinked".PatientTrustID, NGSTest.GELProbandID, NGSTest.IRID '
-		'FROM (((((NGSTest INNER JOIN Patients ON NGSTest.InternalPatientID = Patients.InternalPatientID) '
-		'INNER JOIN "gwv-patientlinked" ON "gwv-patientlinked".PatientTrustID = Patients.PatientID) INNER JOIN Checker ON NGSTest.BookBy = Checker.Check1ID) '
-		'LEFT JOIN Item AS Item_Title ON Checker.Title = Item_Title.ItemID) INNER JOIN Item AS Item_Address ON Checker.Address = Item_Address.ItemID) '
-		'LEFT JOIN gw_GenderTable ON "gwv-patientlinked".GenderID = gw_GenderTable.GenderID '
-		'WHERE NGSTestID = {ngs_test_id};'
-		).format(ngs_test_id=ngs_test_id)
-	# Execute the query to get patient demographics
-	row = cursor.execute(demographics_sql).fetchone()
-	# If results have been returned from the query...
-	if row:
-		# Populate demographics dictionaries with values returned by query
-		demographics = {
-			'clinician': row.clinician_name,
-			'clinician_address': row.clinician_address,
-			'patient_name': '{first_name} {last_name}'.format(first_name=row.FirstName, last_name=row.LastName),
-			'sex': row.Gender,
-			'DOB': row.DoB.strftime(r'%d/%m/%Y'), # Extract date from datetime field in format dd/mm/yyyy
-			'NHSNumber': row.NHSNo,
-			'PRU': row.PatientTrustID,
-			'GELID': row.GELProbandID,
-			'IRID': row.IRID,
-			'date_reported': datetime.datetime.now().strftime(r'%d/%m/%Y') # Current date in format dd/mm/yyyy
-		}
-		# If clinician has a title (e.g. Dr.), update the clinician name to include it
-		if row.clinician_title:
-			demographics['clinician'] = '{title} {name}'.format(title=row.clinician_title, name=demographics['clinician'])
-		# If None has been returned for gender (because there isn't one in geneworks) change value to 'Unknown'
-		if not demographics['sex']: 
-			demographics['sex'] = 'Unknown'
-		return demographics
+class MokaQueryExecuter(object):
+	def __init__(self):
+		# establish pyodbc connection to Moka
+		self.cnxn = pyodbc.connect('DRIVER={SQL Server}; SERVER=GSTTV-MOKA; DATABASE=mokadata;', autocommit=True)
+		# return cursor to execute query
+		self.cursor = cnxn.cursor()
+
+	def get_demographics(self, ngs_test_id):
+		"""
+		Takes a Moka NSGTestID as input.
+		Pulls out details from Moka needed to populate the cover page. 
+		"""
+		demographics_sql = (
+			'SELECT NGSTest.NGSTestID, Item_Title.Item AS clinician_title, Checker.Name AS clinician_name, Item_Address.Item AS clinician_address, '
+			'"gwv-patientlinked".FirstName, "gwv-patientlinked".LastName, "gwv-patientlinked".DoB, gw_GenderTable.Gender, "gwv-patientlinked".NHSNo, '
+			'"gwv-patientlinked".PatientTrustID, NGSTest.GELProbandID, NGSTest.IRID '
+			'FROM (((((NGSTest INNER JOIN Patients ON NGSTest.InternalPatientID = Patients.InternalPatientID) '
+			'INNER JOIN "gwv-patientlinked" ON "gwv-patientlinked".PatientTrustID = Patients.PatientID) INNER JOIN Checker ON NGSTest.BookBy = Checker.Check1ID) '
+			'LEFT JOIN Item AS Item_Title ON Checker.Title = Item_Title.ItemID) INNER JOIN Item AS Item_Address ON Checker.Address = Item_Address.ItemID) '
+			'LEFT JOIN gw_GenderTable ON "gwv-patientlinked".GenderID = gw_GenderTable.GenderID '
+			'WHERE NGSTestID = {ngs_test_id};'
+			).format(ngs_test_id=ngs_test_id)
+		# Execute the query to get patient demographics
+		row = self.cursor.execute(demographics_sql).fetchone()
+		# If results have been returned from the query...
+		if row:
+			# Populate demographics dictionaries with values returned by query
+			demographics = {
+				'clinician': row.clinician_name,
+				'clinician_address': row.clinician_address,
+				'patient_name': '{first_name} {last_name}'.format(first_name=row.FirstName, last_name=row.LastName),
+				'sex': row.Gender,
+				'DOB': row.DoB.strftime(r'%d/%m/%Y'), # Extract date from datetime field in format dd/mm/yyyy
+				'NHSNumber': row.NHSNo,
+				'PRU': row.PatientTrustID,
+				'GELID': row.GELProbandID,
+				'IRID': row.IRID,
+				'date_reported': datetime.datetime.now().strftime(r'%d/%m/%Y') # Current date in format dd/mm/yyyy
+			}
+			# If clinician has a title (e.g. Dr.), update the clinician name to include it
+			if row.clinician_title:
+				demographics['clinician'] = '{title} {name}'.format(title=row.clinician_title, name=demographics['clinician'])
+			# If None has been returned for gender (because there isn't one in geneworks) change value to 'Unknown'
+			if not demographics['sex']: 
+				demographics['sex'] = 'Unknown'
+			return demographics
 
 class GelReportGenerator(object):
 	def __init__(self, path_to_wkhtmltopdf):
@@ -128,10 +130,12 @@ def main():
 	gel_report_output_folder = r'\\gstt.local\shared\Genetics\Bioinformatics\GeL\reports_to_send'
 	# Get command line arguments
 	args = process_arguments()
+	# Create MokaQueryExecuter object
+	moka = MokaQueryExecuter()
 	# Loop through each Moka NGStestID supplied as an argument
 	for ngs_test_id in args.n:
 		# Get demographics for cover page from Moka.
-		demographics = get_moka_demographics(ngs_test_id)
+		demographics = moka.get_demographics(ngs_test_id)
 		# If no demographics are returned, print an error message
 		if not demographics:
 			print 'ERROR: No results returned from Moka demographics query for NGSTestID {ngs_test_id}. Check there are records in all inner joined tables (eg clinician address in checker table)'.format(ngs_test_id=ngs_test_id)
@@ -166,10 +170,10 @@ def main():
 				# print an error message
 				print 'ERROR: Original GeL report not found for IR-ID {ir_id}. Please ensure it has been saved as PDF with the following filepath: {gel_original_report}'.format(gel_original_report=os.path.join(gel_original_report_folder, gel_original_report_search_name), ir_id=demographics['IRID'])
 			else:
-				# if only one report found create the name of the report using the file identified using the wildcard
+				# If only one report found create the name of the report using the file identified using the wildcard
 				gel_original_report = os.path.join(gel_original_report_folder, list_of_html_reports[0])
 				# Attach the GeL report to the cover page and output to the output path specified above.
-				g.pdf_merge(gel_combined_report, g.cover_pdf, gel_original_report)
+				g.pdf_merge(gel_combined_report, g.cover_pdf, gel_original_report)				
 	# Print output location of reports
 	print '\nGenerated reports can be found in: {gel_report_output_folder}'.format(gel_report_output_folder=gel_report_output_folder)
 		
