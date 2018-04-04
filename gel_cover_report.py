@@ -14,7 +14,7 @@ Creates cover page for GeL results and attaches to report provided by GeL
 
 optional arguments:
   -h, --help            show this help message and exit
-  -n NGSTestID [NGSTestID ...], --ngstestid NGSTestID [NGSTestID ...]
+  -n NGSTestID [NGSTestID ...]
                         Moka NGSTestID from NGSTest table
 """
 import sys
@@ -35,7 +35,7 @@ def process_arguments():
 	# Create ArgumentParser object. Description message will be displayed as part of help message if script is run with -h flag
 	parser = argparse.ArgumentParser(description='Creates cover page for GeL results and attaches to report provided by GeL')
 	# Define the arguments that will be taken. Multiple NGSTestIDs from NGSTest table in Moka can be passed as arguments.
-	parser.add_argument('-n', '--ngstestid', metavar='NGSTestID', required=True, type=int, nargs='+', help='Moka NGSTestID from NGSTest table')
+	parser.add_argument('-n', metavar='NGSTestID', required=True, type=int, nargs='+', help='Moka NGSTestID from NGSTest table')
 	# Return the arguments
 	return parser.parse_args()
 
