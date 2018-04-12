@@ -59,12 +59,11 @@ class MokaQueryExecuter(object):
 		"""
 		demographics_sql = (
 			'SELECT NGSTest.NGSTestID, Checker.Name AS clinician_name, Item_Address.Item AS clinician_address, '
-			'"gwv-patientlinked".FirstName, "gwv-patientlinked".LastName, "gwv-patientlinked".DoB, gw_GenderTable.Gender, "gwv-patientlinked".NHSNo, '
+			'"gwv-patientlinked".FirstName, "gwv-patientlinked".LastName, "gwv-patientlinked".DoB, "gwv-patientlinked".Gender, "gwv-patientlinked".NHSNo, '
 			'"gwv-patientlinked".PatientTrustID, NGSTest.GELProbandID, NGSTest.IRID '
 			'FROM (((((NGSTest INNER JOIN Patients ON NGSTest.InternalPatientID = Patients.InternalPatientID) '
 			'INNER JOIN "gwv-patientlinked" ON "gwv-patientlinked".PatientTrustID = Patients.PatientID) INNER JOIN Checker ON NGSTest.BookBy = Checker.Check1ID) '
 			'INNER JOIN Item AS Item_Address ON Checker.Address = Item_Address.ItemID) '
-			'LEFT JOIN gw_GenderTable ON "gwv-patientlinked".GenderID = gw_GenderTable.GenderID '
 			'WHERE NGSTestID = {ngs_test_id};'
 			).format(ngs_test_id=ngs_test_id)
 		# Execute the query to get patient demographics
