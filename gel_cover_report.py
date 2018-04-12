@@ -83,9 +83,6 @@ class MokaQueryExecuter(object):
 				'IRID': row.IRID,
 				'date_reported': datetime.datetime.now().strftime(r'%d/%m/%Y') # Current date in format dd/mm/yyyy
 			}
-			# If clinician has a title (e.g. Dr.), update the clinician name to include it
-			if row.clinician_title:
-				demographics['clinician'] = '{title} {name}'.format(title=row.clinician_title, name=demographics['clinician'])
 			# If None has been returned for gender (because there isn't one in geneworks) change value to 'Unknown'
 			if not demographics['sex']: 
 				demographics['sex'] = 'Unknown'
