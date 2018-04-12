@@ -61,9 +61,9 @@ class MokaQueryExecuter(object):
 			'SELECT NGSTest.NGSTestID, Checker.Name AS clinician_name, Item_Address.Item AS clinician_address, '
 			'"gwv-patientlinked".FirstName, "gwv-patientlinked".LastName, "gwv-patientlinked".DoB, "gwv-patientlinked".Gender, "gwv-patientlinked".NHSNo, '
 			'"gwv-patientlinked".PatientTrustID, NGSTest.GELProbandID, NGSTest.IRID '
-			'FROM (((((NGSTest INNER JOIN Patients ON NGSTest.InternalPatientID = Patients.InternalPatientID) '
+			'FROM (((NGSTest INNER JOIN Patients ON NGSTest.InternalPatientID = Patients.InternalPatientID) '
 			'INNER JOIN "gwv-patientlinked" ON "gwv-patientlinked".PatientTrustID = Patients.PatientID) INNER JOIN Checker ON NGSTest.BookBy = Checker.Check1ID) '
-			'INNER JOIN Item AS Item_Address ON Checker.Address = Item_Address.ItemID) '
+			'INNER JOIN Item AS Item_Address ON Checker.Address = Item_Address.ItemID '
 			'WHERE NGSTestID = {ngs_test_id};'
 			).format(ngs_test_id=ngs_test_id)
 		# Execute the query to get patient demographics
@@ -151,7 +151,7 @@ def main():
 			# Create the cover pdf
 			g.create_cover_pdf(demographics, r'\\gstt.local\apps\Moka\Files\Software\100K\gel_cover_report_template.html')
 			# Specify the path to the folder containing the technical reports downloaded from the interpretation portal
-			gel_original_report_folder = r'\\gstt.local\shared\Genetics\Bioinformatics\GeL\technical_reports\'
+			gel_original_report_folder = r'\\gstt.local\shared\Genetics\Bioinformatics\GeL\technical_reports'
 			# create a search pattern to identify the correct HTML report. Use single character wildcard as the verison of the report is not known
 			gel_original_report_search_name = "ClinicalReport_{ir_id}-?.pdf".format(ir_id=demographics['IRID'])
 			# Specify the output path for the combined report, based on the GeL participant ID and the interpretation request ID retrieved from Moka
