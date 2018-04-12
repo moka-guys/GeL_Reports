@@ -50,7 +50,6 @@ class MokaQueryExecuter(object):
 		"""
 		Executes a supplied SQL query
 		"""
-		print sql
 		self.cursor.execute(sql)
 
 	def get_demographics(self, ngs_test_id):
@@ -190,7 +189,6 @@ def main():
 						username=os.getenv('username'), 
 						ngs_test_id=ngs_test_id
 						)
-				#ngstest_update_sql
 				moka.execute_query(ngstest_update_sql)
 	# Print output location of reports
 	print '\nGenerated reports can be found in: {gel_report_output_folder}'.format(gel_report_output_folder=gel_report_output_folder)
