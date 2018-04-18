@@ -176,6 +176,16 @@ def main():
 				gel_original_report = os.path.join(gel_original_report_folder, list_of_html_reports[0])
 				# Attach the GeL report to the cover page and output to the output path specified above.
 				g.pdf_merge(gel_combined_report, g.cover_pdf, gel_original_report)
+				# Store report filepath as an NGSTestFile in Moka
+				ngstestfile_insert_sql = (
+					"INSERT INTO NGSTestFile (NGSTestID, Description, NGSTestFile, DateAdded) "
+					"VALUES ({ngs_test_id},  '100k Results', '{gel_combined_report}', '{today_date}');"
+					).format(
+						ngs_test_id=ngs_test_id,
+						gel_combined_report=gel_combined_report,
+						today_date=datetime.datetime.now().strftime(r'%Y%m%d %H:%M:%S %p')
+						)
+				moka.execute_query(ngstestfile_insert_sql)
 				# Update the status for NGSTest
 				ngstest_update_sql = (
 					"UPDATE n SET n.Check1ID = c.Check1ID, n.Check1Date = '{today_date}', n.StatusID = 1202218814 "
