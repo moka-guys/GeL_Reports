@@ -147,7 +147,10 @@ class GelReportGenerator(object):
 
 def main():
 	# Output folder for combined reports
-	gel_report_output_folder = r'\\gstt.local\shared\Genetics\Bioinformatics\GeL\reports_to_send'
+	gel_report_output_folder = r'\\gstt.local\apps\Moka\Files\ngs\{year}\{month}'.format(
+		year=datetime.datetime.now().year,
+		month=datetime.datetime.now().month
+		)
 	# Get command line arguments
 	args = process_arguments()
 	# Create MokaQueryExecuter object
