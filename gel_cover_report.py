@@ -23,6 +23,7 @@ import io
 import argparse
 import datetime
 import fnmatch
+import win32com.client as win32
 import pyodbc
 import pdfkit
 from PyPDF2 import PdfFileMerger
@@ -38,6 +39,22 @@ def process_arguments():
 	parser.add_argument('-n', metavar='NGSTestID', required=True, type=int, nargs='+', help='Moka NGSTestID from NGSTest table')
 	# Return the arguments
 	return parser.parse_args()
+
+def generate_email(to_address, subject, body, attachment):
+	'''
+	Populates an Outlook email and opens in separate window
+	'''
+	# Create Outlook message object
+	outlook = win32.Dispatch('outlook.application')
+	mail = outlook.CreateItem(0)
+	# Set email attributes
+	mail.To = to_address
+	mail.Subject = subject
+	mail.HtmlBody = body
+	# Attach file
+	mail.Attachments.Add(Source=attachment)
+	# Open the email in outlook. False argument prevents the Outlook window from blocking the script 
+	mail.Display(False)
 
 class MokaQueryExecuter(object):
 	def __init__(self):
@@ -58,7 +75,7 @@ class MokaQueryExecuter(object):
 		Pulls out details from Moka needed to populate the cover page. 
 		"""
 		demographics_sql = (
-			'SELECT NGSTest.NGSTestID, Checker.Name AS clinician_name, Item_Address.Item AS clinician_address, '
+			'SELECT NGSTest.NGSTestID, Checker.Name AS clinician_name, Checker.Email, Item_Address.Item AS clinician_address, '
 			'"gwv-patientlinked".FirstName, "gwv-patientlinked".LastName, "gwv-patientlinked".DoB, "gwv-patientlinked".Gender, "gwv-patientlinked".NHSNo, '
 			'"gwv-patientlinked".PatientTrustID, NGSTest.GELProbandID, NGSTest.IRID '
 			'FROM (((NGSTest INNER JOIN Patients ON NGSTest.InternalPatientID = Patients.InternalPatientID) '
@@ -73,6 +90,7 @@ class MokaQueryExecuter(object):
 			# Populate demographics dictionaries with values returned by query
 			demographics = {
 				'clinician': row.clinician_name,
+				'clinician_email': row.Email,
 				'clinician_address': row.clinician_address,
 				'patient_name': '{first_name} {last_name}'.format(first_name=row.FirstName, last_name=row.LastName),
 				'sex': row.Gender,
@@ -185,7 +203,8 @@ def main():
 						gel_combined_report=gel_combined_report,
 						today_date=datetime.datetime.now().strftime(r'%Y%m%d %H:%M:%S %p')
 						)
-				moka.execute_query(ngstestfile_insert_sql)
+				#moka.execute_query(ngstestfile_insert_sql)
+				print ngstestfile_insert_sql
 				# Update the status for NGSTest
 				ngstest_update_sql = (
 					"UPDATE n SET n.Check1ID = c.Check1ID, n.Check1Date = '{today_date}', n.StatusID = 1202218814 "
@@ -196,6 +215,21 @@ def main():
 						ngs_test_id=ngs_test_id
 						)
 				moka.execute_query(ngstest_update_sql)
+				# Create email body
+				email_body = (
+					'<body style="font-family:Calibri,sans-serif;">'
+					'Dear {clinician},<br><br>'
+					'Please find attached 100k results for:<br>'
+					'<div style="font-weight:bold;">'
+					'{PRU} {patient_name}'
+					'</div></body>'
+					).format(
+						clinician=demographics['clinician'],
+						PRU=demographics['PRU'],
+						patient_name=demographics['patient_name']
+						)
+				# Populate an outlook email addressed to clinican with results attached 
+				generate_email(demographics['clinician_email'], '100k Results', email_body, gel_combined_report)
 	# Print output location of reports
 	print '\nGenerated reports can be found in: {gel_report_output_folder}'.format(gel_report_output_folder=gel_report_output_folder)
 		
