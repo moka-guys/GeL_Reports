@@ -207,7 +207,7 @@ def main():
 						today_date=datetime.datetime.now().strftime(r'%Y%m%d %H:%M:%S %p')
 						)
 				#moka.execute_query(ngstestfile_insert_sql)
-				print ngstestfile_insert_sql
+				#print ngstestfile_insert_sql
 				# Update the status for NGSTest
 				ngstest_update_sql = (
 					"UPDATE n SET n.Check1ID = c.Check1ID, n.Check1Date = '{today_date}', n.StatusID = 1202218814 "
@@ -219,20 +219,16 @@ def main():
 						)
 				moka.execute_query(ngstest_update_sql)
 				# Create email body
+				email_subject = "100,000 Genomes Project Report for {PRU}".format(PRU=demographics['PRU'])
 				email_body = (
 					'<body style="font-family:Calibri,sans-serif;">'
-					'Dear {clinician},<br><br>'
-					'Please find attached 100k results for:<br>'
-					'<div style="font-weight:bold;">'
-					'{PRU} {patient_name}'
-					'</div></body>'
-					).format(
-						clinician=demographics['clinician'],
-						PRU=demographics['PRU'],
-						patient_name=demographics['patient_name']
-						)
+					'Please find a 100,000 Genomes Project report attached.<br><br>'
+					'Best wishes,<br>'
+					'Wook'
+					'</body>'
+					)
 				# Populate an outlook email addressed to clinican with results attached 
-				generate_email(demographics['clinician_email'], '100k Results', email_body, gel_combined_report)
+				generate_email(demographics['clinician_email'], email_subject, email_body, gel_combined_report)
 	# Print output location of reports
 	print '\nGenerated reports can be found in: {gel_report_output_folder}'.format(gel_report_output_folder=gel_report_output_folder)
 		
