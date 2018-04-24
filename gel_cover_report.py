@@ -75,7 +75,7 @@ class MokaQueryExecuter(object):
 		Pulls out details from Moka needed to populate the cover page. 
 		"""
 		demographics_sql = (
-			'SELECT NGSTest.NGSTestID, Checker.Name AS clinician_name, Checker.Email, Item_Address.Item AS clinician_address, '
+			'SELECT NGSTest.NGSTestID, NGSTest.InternalPatientID, Checker.Name AS clinician_name, Checker.Email, Item_Address.Item AS clinician_address, '
 			'"gwv-patientlinked".FirstName, "gwv-patientlinked".LastName, "gwv-patientlinked".DoB, "gwv-patientlinked".Gender, "gwv-patientlinked".NHSNo, '
 			'"gwv-patientlinked".PatientTrustID, NGSTest.GELProbandID, NGSTest.IRID '
 			'FROM (((NGSTest INNER JOIN Patients ON NGSTest.InternalPatientID = Patients.InternalPatientID) '
@@ -92,6 +92,7 @@ class MokaQueryExecuter(object):
 				'clinician': row.clinician_name,
 				'clinician_email': row.Email,
 				'clinician_address': row.clinician_address,
+				'internal_patient_id': row.InternalPatientID,
 				'patient_name': '{first_name} {last_name}'.format(first_name=row.FirstName, last_name=row.LastName),
 				'sex': row.Gender,
 				'DOB': row.DoB.strftime(r'%d/%m/%Y'), # Extract date from datetime field in format dd/mm/yyyy
@@ -206,8 +207,7 @@ def main():
 						gel_combined_report=gel_combined_report,
 						today_date=datetime.datetime.now().strftime(r'%Y%m%d %H:%M:%S %p')
 						)
-				#moka.execute_query(ngstestfile_insert_sql)
-				#print ngstestfile_insert_sql
+				moka.execute_query(ngstestfile_insert_sql)
 				# Update the status for NGSTest
 				ngstest_update_sql = (
 					"UPDATE n SET n.Check1ID = c.Check1ID, n.Check1Date = '{today_date}', n.StatusID = 1202218814 "
@@ -218,6 +218,18 @@ def main():
 						ngs_test_id=ngs_test_id
 						)
 				moka.execute_query(ngstest_update_sql)
+				# Record in patient log
+				patientlog_insert_sql = (
+					"INSERT INTO PatientLog (InternalPatientID, LogEntry, Date, Login, PCName) "
+					"VALUES ({internal_patient_id},  'NGS: 100k results letter generated for interpretation request {IRID}', '{today_date}', '{username}', '{computer}');"
+					).format(
+						internal_patient_id=demographics['internal_patient_id'],
+						IRID=demographics['IRID'],
+						today_date=datetime.datetime.now().strftime(r'%Y%m%d %H:%M:%S %p'),
+						username=os.getenv('username'),
+						computer=os.getenv('computername')
+						)
+				moka.execute_query(patientlog_insert_sql)				
 				# Create email body
 				email_subject = "100,000 Genomes Project Report for {PRU}".format(PRU=demographics['PRU'])
 				email_body = (
