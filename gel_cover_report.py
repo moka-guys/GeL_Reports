@@ -35,7 +35,7 @@ def process_arguments():
 	"""
 	# Create ArgumentParser object. Description message will be displayed as part of help message if script is run with -h flag
 	parser = argparse.ArgumentParser(description='Creates cover page for GeL results and attaches to report provided by GeL')
-	# Define the arguments that will be taken. Multiple NGSTestIDs from NGSTest table in Moka can be passed as arguments.
+	# Define the arguments that will be taken. nargs='+' allows multiple NGSTestIDs from NGSTest table in Moka can be passed as arguments.
 	parser.add_argument('-n', metavar='NGSTestID', required=True, type=int, nargs='+', help='Moka NGSTestID from NGSTest table')
 	# Return the arguments
 	return parser.parse_args()
