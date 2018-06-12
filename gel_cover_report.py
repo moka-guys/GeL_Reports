@@ -1,4 +1,5 @@
 """
+v1.3 - AJ 2018/06/12 - use ReportEmail field from checker table.
 v1.2 - AB 2018/04/04
 Requirements:
 	ODBC connection to Moka
@@ -75,7 +76,7 @@ class MokaQueryExecuter(object):
 		Pulls out details from Moka needed to populate the cover page. 
 		"""
 		demographics_sql = (
-			'SELECT NGSTest.NGSTestID, NGSTest.InternalPatientID, Checker.Name AS clinician_name, Checker.Email, Item_Address.Item AS clinician_address, '
+			'SELECT NGSTest.NGSTestID, NGSTest.InternalPatientID, Checker.Name AS clinician_name, Checker.ReportEmail, Item_Address.Item AS clinician_address, '
 			'"gwv-patientlinked".FirstName, "gwv-patientlinked".LastName, "gwv-patientlinked".DoB, "gwv-patientlinked".Gender, "gwv-patientlinked".NHSNo, '
 			'"gwv-patientlinked".PatientTrustID, NGSTest.GELProbandID, NGSTest.IRID '
 			'FROM (((NGSTest INNER JOIN Patients ON NGSTest.InternalPatientID = Patients.InternalPatientID) '
@@ -90,7 +91,7 @@ class MokaQueryExecuter(object):
 			# Populate demographics dictionaries with values returned by query
 			demographics = {
 				'clinician': row.clinician_name,
-				'clinician_email': row.Email,
+				'clinician_email': row.ReportEmail,
 				'clinician_address': row.clinician_address,
 				'internal_patient_id': row.InternalPatientID,
 				'patient_name': '{first_name} {last_name}'.format(first_name=row.FirstName, last_name=row.LastName),
