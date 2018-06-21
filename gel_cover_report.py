@@ -1,4 +1,5 @@
 """
+v1.3 - AJ 2018/06/12 - use ReportEmail field from checker table.
 v1.2 - AB 2018/04/04
 Requirements:
 	ODBC connection to Moka
@@ -75,7 +76,7 @@ class MokaQueryExecuter(object):
 		Pulls out details from Moka needed to populate the cover page. 
 		"""
 		demographics_sql = (
-			'SELECT NGSTest.NGSTestID, NGSTest.InternalPatientID, Checker.Name AS clinician_name, Checker.Email, Item_Address.Item AS clinician_address, '
+			'SELECT NGSTest.NGSTestID, NGSTest.InternalPatientID, Checker.Name AS clinician_name, Checker.ReportEmail, Item_Address.Item AS clinician_address, '
 			'"gwv-patientlinked".FirstName, "gwv-patientlinked".LastName, "gwv-patientlinked".DoB, "gwv-patientlinked".Gender, "gwv-patientlinked".NHSNo, '
 			'"gwv-patientlinked".PatientTrustID, NGSTest.GELProbandID, NGSTest.IRID '
 			'FROM (((NGSTest INNER JOIN Patients ON NGSTest.InternalPatientID = Patients.InternalPatientID) '
@@ -90,7 +91,7 @@ class MokaQueryExecuter(object):
 			# Populate demographics dictionaries with values returned by query
 			demographics = {
 				'clinician': row.clinician_name,
-				'clinician_email': row.Email,
+				'clinician_report_email': row.ReportEmail,
 				'clinician_address': row.clinician_address,
 				'internal_patient_id': row.InternalPatientID,
 				'patient_name': '{first_name} {last_name}'.format(first_name=row.FirstName, last_name=row.LastName),
@@ -163,6 +164,14 @@ def main():
 		# If no demographics are returned, print an error message
 		if not demographics:
 			print 'ERROR: No results returned from Moka demographics query for NGSTestID {ngs_test_id}. Check there are records in all inner joined tables (eg clinician address in checker table)'.format(ngs_test_id=ngs_test_id)
+		# identify any missing values. if any of the values in the dict are Null (None)
+		elif None in demographics.values():
+			# loop through each key
+			for field in demographics:
+				# if the value is none
+				if not demographics[field]:
+					# print the missing field.
+					print "no value in Moka for " + field
 		# Otherwise continue...
 		else:
 			# Create GelReportGenerator object
@@ -240,9 +249,10 @@ def main():
 					'</body>'
 					)
 				# Populate an outlook email addressed to clinican with results attached 
-				generate_email(demographics['clinician_email'], email_subject, email_body, gel_combined_report)
-	# Print output location of reports
-	print '\nGenerated reports can be found in: {gel_report_output_folder}'.format(gel_report_output_folder=gel_report_output_folder)
+				generate_email(demographics['clinician_report_email'], email_subject, email_body, gel_combined_report)
+
+			# Print output location of reports
+			print '\nGenerated reports can be found in: {gel_report_output_folder}'.format(gel_report_output_folder=gel_report_output_folder)
 		
 
 if __name__ == '__main__':
