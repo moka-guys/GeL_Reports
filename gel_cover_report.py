@@ -1,5 +1,5 @@
 """
-v1.4 - AB 2018/07/05
+v1.5 - AB 2018/11/13
 Requirements:
     ODBC connection to Moka
     Python 2.7
@@ -55,6 +55,98 @@ def generate_email(to_address, subject, body, attachment):
     mail.Attachments.Add(Source=attachment)
     # Open the email in outlook. False argument prevents the Outlook window from blocking the script 
     mail.Display(False)
+
+class GeLGeneworksCharge(object):
+    def __init__(self):
+        # PRU
+        self.pru = None
+        # Geneworks test ID for adding charge
+        self.test_id = None
+        # Geneworks specimen ID for adding charge
+        self.specimen_id = None
+
+    def get_test_details(self, pru):
+        # Store the PRU for use by other functions
+        self.pru = pru
+        # establish pyodbc connection to Moka
+        cnxn = pyodbc.connect('DRIVER={SQL Server}; SERVER=GSTTV-MOKA; DATABASE=mokadata;', autocommit=True)
+        # return cursor to execute query
+        cursor = cnxn.cursor()
+        # query to retrieve the test ID and specimen number for the test. These are required for the stored procedure that adds the charge.
+        # DisorderID 60 is 'Whole Genome Sequencing' 
+        # TestDescriptionID 18 is 'GeL'
+        # There can be multiple specimens/tests per patient with these Disorder and TestDescriptionIDs, (where the omics samples that are stored have also had these tests added)
+        # Therefore need to select the sample that has actually had DNA extracted, hence the inner join to the dnanumberlinked view.
+        test_details_sql = (
+            'SELECT "gwv-testlinked".TestID, "gwv-specimenlinked".SpecimenTrustID '
+            'FROM ("gwv-dnatestrequestlinked" INNER JOIN (("gwv-testlinked" INNER JOIN "gwv-specimenlinked" ON "gwv-testlinked".SpecimenID = "gwv-specimenlinked".SpecimenID) '
+            'INNER JOIN "gwv-patientlinked" ON "gwv-specimenlinked".PatientID = "gwv-patientlinked".PatientID) ON "gwv-dnatestrequestlinked".TestID = "gwv-testlinked".TestID) '
+            'INNER JOIN "gwv-dnanumberlinked" ON "gwv-specimenlinked".SpecimenID = "gwv-dnanumberlinked".SpecimenID '
+            'WHERE "gwv-patientlinked".PatientTrustID = \'{pru}\' AND "gwv-dnatestrequestlinked".DisorderID = 60 AND "gwv-dnatestrequestlinked".TestDescriptionID = 18'
+        ).format(pru=pru)
+        # Exexute the query
+        rows = cursor.execute(test_details_sql).fetchall()
+        # Check that there is only 1 record returned and set the test id and spec id attributes. If a different number were returned, leave as None and print error message.
+        if len(rows) == 1:
+            self.test_id = rows[0].TestID
+            self.specimen_id = rows[0].SpecimenTrustID
+        elif len(rows) == 0:
+            print "ERROR: Unable to find GeL test in Geneworks for {pru}".format(pru=pru)
+        elif len(rows) > 1:
+            print "ERROR: Multiple GeL DNAs found in Geneworks for {pru}, unable to determine which test charge should be raised against".format(pru=pru)
+
+    def insert_charge(self):
+        """
+        Inserts GeL charge to GeneWorks for given PRU
+        """
+        if self.test_id and self.specimen_id:
+            # establish pyodbc connection to Geneworks
+            cnxn = pyodbc.connect('DRIVER={SQL Server}; SERVER=sv-pr-genwork; DATABASE=geneworks; UID=moka; PWD=moka;', autocommit=True)
+            # return cursor to execute query
+            cursor = cnxn.cursor()
+            # Add in sql for spInsertLabReportCostDetail
+            # Necessary to use SET NOCOUNT ON to prevent 'pyodbc.ProgrammingError: No results.  Previous SQL was not a query.' error, see:
+            # https://stackoverflow.com/questions/7753830/mssql2008-pyodbc-previous-sql-was-not-a-query
+            charge_sql = (
+                'SET NOCOUNT ON; '
+                'DECLARE @return_value int, @RecordNo int, @timestamp datetime; '
+                'set @timestamp = getdate(); '
+                'EXEC @return_value = [dbo].[spInsertLabReportCostDetail] '
+                '@SpecimenNo = \'{specimen_id}\', '
+                '@CostTypeID = NULL, '
+                '@Destination = NULL, '
+                '@DateReported = @timestamp, '
+                '@TestType = N\'GEL NEG\', '
+                '@Cost = 150, '
+                '@DNAUnitsSample = NULL, '
+                '@DNAUnitsAnalysis = NULL, '
+                '@DNAUnitsReport = NULL, '
+                '@DNAUnitsTotal = 1, '
+                '@CytoUnits = NULL, '
+                '@EnteredByID = 888, '
+                '@PCRFee = NULL, '
+                '@TestID = {test_id}, '
+                '@RecordNo = @RecordNo OUTPUT; '
+                'SELECT @RecordNo as record_no;'
+            ).format(
+                specimen_id=self.specimen_id, 
+                test_id=self.test_id
+                )            
+            try:
+                # Insert the charge and capture the returned record number
+                rows = cursor.execute(charge_sql).fetchall()
+                # Check that one and only one record has been updated: 
+                # Print error message if anything other than 1 record number is returned from the query
+                if len(rows) != 1:
+                    print "ERROR: When inserting charge for {pru}, {records} were updated.".format(pru=self.pru, records=len(rows))
+            except:
+                # Error message if theres an error inserting charge
+                print "ERROR: Encountered error when inserting charge for {pru}".format(pru=self.pru)
+
+        else:
+            print "ERROR: Unable to insert charge for {pru}. No specimen number and/or test ID".format(pru=pru)
+            
+        
 
 class MokaQueryExecuter(object):
     def __init__(self):
@@ -256,7 +348,10 @@ def main():
                     )
                 # Populate an outlook email addressed to clinican with results attached 
                 generate_email(demographics['clinician_report_email'], email_subject, email_body, gel_combined_report)
-
+                # Insert charge to Geneworks
+                g = GeLGeneworksCharge()
+                g.get_test_details(demographics['PRU'])
+                g.insert_charge()
             # Print output location of reports
             print '\nGenerated reports can be found in: {gel_report_output_folder}'.format(gel_report_output_folder=gel_report_output_folder)
         
