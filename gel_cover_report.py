@@ -66,6 +66,9 @@ class GeLGeneworksCharge(object):
         self.specimen_id = None
 
     def get_test_details(self, pru):
+        """
+        Retrieves required Geneworks details for entering charge
+        """
         # Store the PRU for use by other functions
         self.pru = pru
         # establish pyodbc connection to Moka
