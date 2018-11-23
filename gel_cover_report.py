@@ -126,7 +126,7 @@ class GeLGeneworksCharge(object):
                 '@DNAUnitsReport = NULL, '
                 '@DNAUnitsTotal = 1, '
                 '@CytoUnits = NULL, '
-                '@EnteredByID = 888, '
+                '@EnteredByID = 888, ' # This is the user 'moka' in geneworks
                 '@PCRFee = NULL, '
                 '@TestID = {test_id}, '
                 '@RecordNo = @RecordNo OUTPUT; '
