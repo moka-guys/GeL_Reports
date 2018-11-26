@@ -94,9 +94,9 @@ class GeLGeneworksCharge(object):
             self.test_id = rows[0].TestID
             self.specimen_id = rows[0].SpecimenTrustID
         elif len(rows) == 0:
-            print "ERROR: Unable to find GeL test in Geneworks for {pru}".format(pru=pru)
+            print "ERROR: Unable to find GeL test in Geneworks for {pru}.".format(pru=pru)
         elif len(rows) > 1:
-            print "ERROR: Multiple GeL DNAs found in Geneworks for {pru}, unable to determine which test charge should be raised against".format(pru=pru)
+            print "ERROR: Multiple GeL tests found in Geneworks for {pru}.".format(pru=pru)
 
     def insert_charge(self):
         """
@@ -144,10 +144,10 @@ class GeLGeneworksCharge(object):
                     print "ERROR: When inserting charge for {pru}, {records} were updated.".format(pru=self.pru, records=len(rows))
             except:
                 # Error message if theres an error inserting charge
-                print "ERROR: Encountered error when inserting charge for {pru}".format(pru=self.pru)
+                print "ERROR: Encountered error when inserting charge for {pru}.".format(pru=self.pru)
 
         else:
-            print "ERROR: Unable to insert charge for {pru}. No specimen number and/or test ID".format(pru=pru)
+            print "ERROR: Unable to insert charge for {pru}. Test ID or Specimen ID not determined. Please add manually.".format(pru=self.pru)
             
         
 
