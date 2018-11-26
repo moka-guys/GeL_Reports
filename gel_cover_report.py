@@ -96,7 +96,7 @@ class GeLGeneworksCharge(object):
         elif len(rows) == 0:
             print "ERROR: Unable to find GeL test in Geneworks for {pru}".format(pru=pru)
         elif len(rows) > 1:
-            print "ERROR: Multiple GeL DNAs found in Geneworks for {pru}, unable to determine which test charge should be raised against".format(pru=pru)
+            print "ERROR: Multiple GeL tests found in Geneworks for {pru}, unable to determine which test charge should be raised against".format(pru=pru)
 
     def insert_charge(self):
         """
