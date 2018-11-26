@@ -147,7 +147,7 @@ class GeLGeneworksCharge(object):
                 print "ERROR: Encountered error when inserting charge for {pru}".format(pru=self.pru)
 
         else:
-            print "ERROR: Unable to insert charge for {pru}. No specimen number and/or test ID".format(pru=self.pru)
+            print "ERROR: Unable to insert charge for {pru}. Please add manually.".format(pru=self.pru)
             
         
 
