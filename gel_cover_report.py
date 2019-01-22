@@ -1,5 +1,5 @@
 """
-v1.5 - AB 2018/11/13
+v1.6 - AB 2019/01/22
 Requirements:
     ODBC connection to Moka
     Python 2.7
@@ -164,13 +164,13 @@ class MokaQueryExecuter(object):
         """
         self.cursor.execute(sql)
 
-    def get_demographics(self, ngs_test_id):
+    def get_data(self, ngs_test_id):
         """
         Takes a Moka NSGTestID as input.
         Pulls out details from Moka needed to populate the cover page. 
         """
-        demographics_sql = (
-            'SELECT NGSTest.NGSTestID, NGSTest.InternalPatientID, Checker.Name AS clinician_name, Checker.ReportEmail, Item_Address.Item AS clinician_address, '
+        data_sql = (
+            'SELECT NGSTest.NGSTestID, NGSTest.InternalPatientID, NGSTest.ResultCode, Checker.Name AS clinician_name, Checker.ReportEmail, Item_Address.Item AS clinician_address, '
             '"gwv-patientlinked".FirstName, "gwv-patientlinked".LastName, "gwv-patientlinked".DoB, "gwv-patientlinked".Gender, "gwv-patientlinked".NHSNo, '
             '"gwv-patientlinked".PatientTrustID, NGSTest.GELProbandID, NGSTest.IRID '
             'FROM (((NGSTest INNER JOIN Patients ON NGSTest.InternalPatientID = Patients.InternalPatientID) '
@@ -178,12 +178,12 @@ class MokaQueryExecuter(object):
             'INNER JOIN Item AS Item_Address ON Checker.Address = Item_Address.ItemID '
             'WHERE NGSTestID = {ngs_test_id};'
             ).format(ngs_test_id=ngs_test_id)
-        # Execute the query to get patient demographics
-        row = self.cursor.execute(demographics_sql).fetchone()
+        # Execute the query to get patient data
+        row = self.cursor.execute(data_sql).fetchone()
         # If results have been returned from the query...
         if row:
-            # Populate demographics dictionaries with values returned by query
-            demographics = {
+            # Populate data dictionaries with values returned by query
+            data = {
                 'clinician': row.clinician_name,
                 'clinician_report_email': row.ReportEmail,
                 'clinician_address': row.clinician_address,
@@ -195,12 +195,13 @@ class MokaQueryExecuter(object):
                 'PRU': row.PatientTrustID,
                 'GELID': row.GELProbandID,
                 'IRID': row.IRID,
-                'date_reported': datetime.datetime.now().strftime(r'%d/%m/%Y') # Current date in format dd/mm/yyyy
+                'date_reported': datetime.datetime.now().strftime(r'%d/%m/%Y'), # Current date in format dd/mm/yyyy
+                'result_code': row.ResultCode
             }
             # If None has been returned for gender (because there isn't one in geneworks) change value to 'Unknown'
-            if not demographics['sex']: 
-                demographics['sex'] = 'Unknown'
-            return demographics
+            if not data['sex']: 
+                data['sex'] = 'Unknown'
+            return data
 
 class GelReportGenerator(object):
     def __init__(self, path_to_wkhtmltopdf):
@@ -209,16 +210,16 @@ class GelReportGenerator(object):
         # Attribute to hold the in-memory cover file
         self.cover_pdf = None
 
-    def create_cover_pdf(self, demographics, template):
+    def create_cover_pdf(self, data, template):
         """
-        Populate html template with demographics and store as pdf
+        Populate html template with data and store as pdf
         """
         # specify the folder containing the html template for cover report 
         html_template_dir = Environment(loader=FileSystemLoader(os.path.dirname(template)))
         # specify which html template to use
         html_template = html_template_dir.get_template(os.path.basename(template))
-        # populate the template with values from demographics dictionary
-        cover_html = html_template.render(demographics)
+        # populate the template with values from data dictionary
+        cover_html = html_template.render(data)
         # Specify path to wkhtmltopdf executable (used by pdfkit)
         pdfkit_config = pdfkit.configuration(wkhtmltopdf=self.path_to_wkhtmltopdf)
         # Specify options. 'quiet' turns off verbose stdout when writing to pdf.
@@ -253,36 +254,51 @@ def main():
     moka = MokaQueryExecuter()
     # Loop through each Moka NGStestID supplied as an argument
     for ngs_test_id in args.n:
-        # Get demographics for cover page from Moka.
-        demographics = moka.get_demographics(ngs_test_id)
-        # If no demographics are returned, print an error message
-        if not demographics:
-            print 'ERROR: No results returned from Moka demographics query for NGSTestID {ngs_test_id}. Check there are records in all inner joined tables (eg clinician address in checker table)'.format(ngs_test_id=ngs_test_id)
+        # Get data for cover page from Moka.
+        data = moka.get_data(ngs_test_id)
+        # If no data are returned, print an error message
+        if not data:
+            print 'ERROR: No results returned from Moka data query for NGSTestID {ngs_test_id}. Check there are records in all inner joined tables (eg clinician address in checker table)'.format(ngs_test_id=ngs_test_id)
         # identify any missing values. if any of the values in the dict are Null (None)
-        elif None in demographics.values():
+        elif None in data.values():
             # loop through each key
-            for field in demographics:
+            for field in data:
                 # if the value is none
-                if not demographics[field]:
+                if not data[field]:
                     # print the missing field.
-                    print "no value in Moka for " + field
+                    print "ERROR: No {field} value in Moka for NGSTestID {ngs_test_id}".format(field=field, ngs_test_id=ngs_test_id)
         # Otherwise continue...
         else:
+            # Set summary of findings text based on result code If result code is Negative (1) or Negative Negative (1189679668)
+            if data['result_code'] in [1, 1189679668]:
+                # 1 = Negative, 1189679668 = NegNeg
+                data['summary_of_findings'] = (
+                    'Whole genome sequencing has been completed by Genomics England and the primary analysis has not identified any underlying genetic cause of the clinical presentation.'
+                )
+            elif data['result_code'] in [1189679670]:
+                # 1189679670 = Negative but with a previously reported variant i.e. No new findings
+                data['summary_of_findings'] = (
+                    'Whole genome sequencing has been completed by Genomics England; please see the genome interpretation section for details of previously reported variant(s).'
+                )                
+            else:
+                # If result code not known, print error and skip to the next case
+                print 'ERROR: Unknown result code for NGSTestID {ngs_test_id}.'.format(ngs_test_id=ngs_test_id)
+                continue
             # Create GelReportGenerator object
-            g = GelReportGenerator(path_to_wkhtmltopdf=r'\\gstt.local\shared\Genetics_Data2\Array\Software\wkhtmltopdf\bin\wkhtmltopdf.exe')
+            g = GelReportGenerator(path_to_wkhtmltopdf=r'\\gstt.local\shared\Genetics_Data2\Array\Software\wkhtmltopdf\bin\wkhtmltopdf.exe')            
             # Create the cover pdf
-            g.create_cover_pdf(demographics, r'\\gstt.local\apps\Moka\Files\Software\100K\gel_cover_report_template.html')
+            g.create_cover_pdf(data, r'\\gstt.local\apps\Moka\Files\Software\100K\gel_cover_report_template.html')
             # Specify the path to the folder containing the technical reports downloaded from the interpretation portal
             gel_original_report_folder = r'\\gstt.local\shared\Genetics\Bioinformatics\GeL\technical_reports'
             # create a search pattern to identify the correct HTML report. Use single character wildcard as the verison of the report is not known
-            gel_original_report_search_name = "ClinicalReport_{ir_id}-?.pdf".format(ir_id=demographics['IRID'])
+            gel_original_report_search_name = "ClinicalReport_{ir_id}-?.pdf".format(ir_id=data['IRID'])
             # Specify the output path for the combined report, based on the GeL participant ID and the interpretation request ID retrieved from Moka
             gel_combined_report = r'{gel_report_output_folder}\{pru}_{proband_id}_{ir_id}_{date}.pdf'.format(
                     gel_report_output_folder=gel_report_output_folder,
-                    pru=demographics['PRU'].replace(':', '_'),
+                    pru=data['PRU'].replace(':', '_'),
                     date=datetime.datetime.now().strftime(r'%y%m%d'),
-                    proband_id=demographics['GELID'],
-                    ir_id=demographics['IRID']
+                    proband_id=data['GELID'],
+                    ir_id=data['IRID']
                     )
             # create an empty list to hold all the reports which match the search pattern
             list_of_html_reports = []
@@ -291,11 +307,11 @@ def main():
             # if there is more than one report for this case
             if len(list_of_html_reports) > 1:
                 # print error message
-                print 'ERROR: Multiple ({file_count}) versions of the HTML report exist for IR-ID {ir_id}. Ensure only the correct version exists in {gel_original_report_folder}.'.format(file_count=len(list_of_html_reports), ir_id=demographics['IRID'], gel_original_report_folder=gel_original_report_folder)
+                print 'ERROR: Multiple ({file_count}) versions of the HTML report exist for IR-ID {ir_id}. Ensure only the correct version exists in {gel_original_report_folder}.'.format(file_count=len(list_of_html_reports), ir_id=data['IRID'], gel_original_report_folder=gel_original_report_folder)
             # if the original GeL report is not found, 
             elif len(list_of_html_reports) < 1:
                 # print an error message
-                print 'ERROR: Original GeL report not found for IR-ID {ir_id}. Please ensure it has been saved as PDF with the following filepath: {gel_original_report}'.format(gel_original_report=os.path.join(gel_original_report_folder, gel_original_report_search_name), ir_id=demographics['IRID'])
+                print 'ERROR: Original GeL report not found for IR-ID {ir_id}. Please ensure it has been saved as PDF with the following filepath: {gel_original_report}'.format(gel_original_report=os.path.join(gel_original_report_folder, gel_original_report_search_name), ir_id=data['IRID'])
             else:
                 # If only one report found create the name of the report using the file identified using the wildcard
                 gel_original_report = os.path.join(gel_original_report_folder, list_of_html_reports[0])
@@ -326,8 +342,8 @@ def main():
                     "INSERT INTO PatientLog (InternalPatientID, LogEntry, Date, Login, PCName) "
                     "VALUES ({internal_patient_id},  'NGS: 100k results letter generated for interpretation request {IRID}', '{today_date}', '{username}', '{computer}');"
                     ).format(
-                        internal_patient_id=demographics['internal_patient_id'],
-                        IRID=demographics['IRID'],
+                        internal_patient_id=data['internal_patient_id'],
+                        IRID=data['IRID'],
                         today_date=datetime.datetime.now().strftime(r'%Y%m%d %H:%M:%S %p'),
                         username=os.getenv('username'),
                         computer=os.getenv('computername')
@@ -350,10 +366,10 @@ def main():
                     '</body>'
                     )
                 # Populate an outlook email addressed to clinican with results attached 
-                generate_email(demographics['clinician_report_email'], email_subject, email_body, gel_combined_report)
+                generate_email(data['clinician_report_email'], email_subject, email_body, gel_combined_report)
                 # Insert charge to Geneworks
                 g = GeLGeneworksCharge()
-                g.get_test_details(demographics['PRU'])
+                g.get_test_details(data['PRU'])
                 g.insert_charge()
             # Print output location of reports
             print '\nGenerated reports can be found in: {gel_report_output_folder}'.format(gel_report_output_folder=gel_report_output_folder)
