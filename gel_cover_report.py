@@ -1,7 +1,7 @@
 """
 v1.6 - AB 2019/01/22
 Requirements:
-    ODBC connection to Moka
+    ODBC connection to Moka and Geneworks
     Python 2.7
     pyodbc
     pdfkit
