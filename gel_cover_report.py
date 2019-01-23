@@ -23,11 +23,16 @@ import io
 import argparse
 import datetime
 import fnmatch
+from ConfigParser import ConfigParser
 import win32com.client as win32
 import pyodbc
 import pdfkit
 from PyPDF2 import PdfFileMerger
 from jinja2 import Environment, FileSystemLoader
+
+# Read config file
+config = ConfigParser()
+config.read(r"F:\Moka\Files\Software\100K\config.ini")
 
 def process_arguments():
     """
@@ -72,7 +77,12 @@ class GeLGeneworksCharge(object):
         # Store the PRU for use by other functions
         self.pru = pru
         # establish pyodbc connection to Moka
-        cnxn = pyodbc.connect('DRIVER={SQL Server}; SERVER=GSTTV-MOKA; DATABASE=mokadata;', autocommit=True)
+        cnxn = pyodbc.connect('DRIVER={{SQL Server}}; SERVER={server}; DATABASE={database};'.format(
+            server=config.get("MOKA", "SERVER"),
+            database=config.get("MOKA", "DATABASE")
+            ), 
+            autocommit=True
+        )
         # return cursor to execute query
         cursor = cnxn.cursor()
         # query to retrieve the test ID and specimen number for the test. These are required for the stored procedure that adds the charge.
@@ -104,7 +114,14 @@ class GeLGeneworksCharge(object):
         """
         if self.test_id and self.specimen_id:
             # establish pyodbc connection to Geneworks
-            cnxn = pyodbc.connect('DRIVER={SQL Server}; SERVER=sv-pr-genwork; DATABASE=geneworks; UID=moka; PWD=moka;', autocommit=True)
+            cnxn = pyodbc.connect('DRIVER={{SQL Server}}; SERVER={server}; DATABASE={database}; UID={user}; PWD={password};'.format(
+                server=config.get("GENEWORKS", "SERVER"),
+                database=config.get("GENEWORKS", "DATABASE"),
+                user=config.get("GENEWORKS", "USER"),
+                password=config.get("GENEWORKS", "PASSWORD")
+                ), 
+            autocommit=True
+            )
             # return cursor to execute query
             cursor = cnxn.cursor()
             # Add in sql for spInsertLabReportCostDetail
@@ -154,7 +171,12 @@ class GeLGeneworksCharge(object):
 class MokaQueryExecuter(object):
     def __init__(self):
         # establish pyodbc connection to Moka
-        cnxn = pyodbc.connect('DRIVER={SQL Server}; SERVER=GSTTV-MOKA; DATABASE=mokadata;', autocommit=True)
+        cnxn = pyodbc.connect('DRIVER={{SQL Server}}; SERVER={server}; DATABASE={database};'.format(
+            server=config.get("MOKA", "SERVER"),
+            database=config.get("MOKA", "DATABASE")
+            ), 
+            autocommit=True
+        )
         # return cursor to execute query
         self.cursor = cnxn.cursor()
 
