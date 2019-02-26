@@ -9,6 +9,7 @@ Requirements:
     jinja2
 
 usage: gel_cover_report.py [-h] -n NGSTestID [NGSTestID ...]
+                           [--download_summary]
 
 Creates cover page for GeL results and attaches to report provided by GeL
 
@@ -16,6 +17,8 @@ optional arguments:
   -h, --help            show this help message and exit
   -n NGSTestID [NGSTestID ...]
                         Moka NGSTestID from NGSTest table
+  --download_summary    Optional flag to download summary of findings
+                        automatically from CIP-API
 """
 import sys
 import os
