@@ -301,6 +301,8 @@ def main():
         # Otherwise continue...
         else:
             # If download_summary flag is used, call script to download the summary of findings report from CIP-API
+            # This will only work if there is only one version of the summary of findings report, as is expected for negneg cases where summary of findings was genereted programmatically
+            # Therefore put -1 at end of summary of findings filename to indicate it is version 1 (as happens when downloading manually from interpretation portal)
             if args.download_summary:
                 ir_id = data['IRID'].split("-")[0]
                 ir_version = data['IRID'].split("-")[1]
