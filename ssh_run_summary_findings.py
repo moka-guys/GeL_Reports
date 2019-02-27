@@ -1,6 +1,5 @@
 #!/usr/bin/env python2
 """
-v1.0 - AB 2019/02/25
 Requirements:
     Python 2.7
     paramiko
