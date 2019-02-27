@@ -18,7 +18,8 @@ optional arguments:
   -n NGSTestID [NGSTestID ...]
                         Moka NGSTestID from NGSTest table
   --download_summary    Optional flag to download summary of findings
-                        automatically from CIP-API
+                        automatically from CIP-API to
+                        P:\Bioinformatics\GeL\technical_reports
 """
 import sys
 import os
@@ -47,7 +48,7 @@ def process_arguments():
     parser = argparse.ArgumentParser(description='Creates cover page for GeL results and attaches to report provided by GeL')
     # Define the arguments that will be taken. nargs='+' allows multiple NGSTestIDs from NGSTest table in Moka can be passed as arguments.
     parser.add_argument('-n', metavar='NGSTestID', required=True, type=int, nargs='+', help='Moka NGSTestID from NGSTest table')
-    parser.add_argument('--download_summary', action='store_true', help='Optional flag to download summary of findings automatically from CIP-API')
+    parser.add_argument('--download_summary', action='store_true', help=r'Optional flag to download summary of findings automatically from CIP-API to P:\Bioinformatics\GeL\technical_reports')
     # Return the arguments
     return parser.parse_args()
 
