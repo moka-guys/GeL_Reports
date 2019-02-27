@@ -7,9 +7,15 @@ Call LabKey.py on the Viapath GENAPP server via ssh. Requires a config file with
 Usage:
     ssh_run_labkey.py -i participant_id -c config_file
 """
+import os
 import argparse
+from ConfigParser import ConfigParser
 import paramiko
 import pprint
+
+# Read config file (must be called config.ini and stored in same directory as script)
+config = ConfigParser()
+config.read(os.path.join(os.path.dirname(os.path.realpath(__file__)), "config.ini"))
 
 class LabKey_SSH():
     '''Call LabKey.py on the Viapath GENAPP01 server via ssh.
@@ -27,21 +33,12 @@ class LabKey_SSH():
     '''
     def __init__(self, participant_id, SSH_config):
         self.participant_id = participant_id
-        self.ssh_host, self.ssh_user, self.ssh_pwd = self.read_ssh_config(SSH_config)
+        self.ssh_host = config.get("GENAPP01", "SERVER")
+        self.ssh_user = config.get("GENAPP01", "USER")
+        self.ssh_pwd = config.get("GENAPP01", "PASSWORD")
         self.raw_string = self.call_labkey_api()
         # Remove newlines, flanking quote characters and separate into a list of variables
         self.name, self.dob, self.nhsid = self.raw_string.rstrip('\n').strip("'").split(",")
-
-    
-    def read_ssh_config(self, config_file):
-        """Read ssh details from config file.
-        Returns:
-            A list of ssh config details.
-        """
-        with open(config_file) as f:
-            # Take the first non-commented (#) line from the config file and clean newline character
-            config = [ line.rstrip('\n') for line in f.readlines() if not line.startswith('#')][0]
-        return config.split(',')
     
     def call_labkey_api(self):
         """Call LabKey.py on the server with input details.
@@ -70,8 +67,6 @@ def main():
     # Call LabKey script on GENAPP via SSH and print patient details to std_out
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--pid', required=True, help="A Genomics England participant ID")
-    parser.add_argument('-c', '--config', required=True, help="Path to a config file with GENAPP ssh credentials. \
-        Host, username and password are separated by commas on a single line.")
     parsed_args = parser.parse_args()
 
     # Get patient data and print
