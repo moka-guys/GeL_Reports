@@ -43,5 +43,6 @@ optional arguments:
   -n NGSTestID [NGSTestID ...]
                         Moka NGSTestID from NGSTest table
   --download_summary    Optional flag to download summary of findings
-                        automatically from CIP-API
+                        automatically from CIP-API to
+                        P:\Bioinformatics\GeL\technical_reports
 ```
