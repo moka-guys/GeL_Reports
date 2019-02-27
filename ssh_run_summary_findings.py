@@ -16,7 +16,8 @@ optional arguments:
                         Interpretation request version
   -o OUTPUT_FILE, --output_file OUTPUT_FILE
                         Output PDF
-  --header HEADER       Text for header of report
+  --header HEADER       Optional string to printed at top of each page e.g.
+                        'Joe Bloggs DoB 01/01/1901'
 """
 import os
 import sys
@@ -104,7 +105,7 @@ def main():
     parser.add_argument('--ir_id', required=True, help='Interpretation request ID')
     parser.add_argument('--ir_version', required=True, help='Interpretation request version')
     parser.add_argument('-o', '--output_file', required=True, help='Output PDF')
-    parser.add_argument('--header', required=False, help='Text for header of report')
+    parser.add_argument('--header', required=False, help='Optional string to printed at top of each page e.g. \'Joe Bloggs    DoB 01/01/1901\'')
     parsed_args = parser.parse_args()
     s = SummaryFindings_SSH(
         ir_id=parsed_args.ir_id,
