@@ -54,11 +54,12 @@ class LabKey_SSH():
                 self.participant_id
             )
         )
-        if stdout:
-            return stdout.read()
-        else:
-            pprint.pprint(stderr.read())
-            raise IOError('Calling LabKey failed. See stderr trace.')
+        client.close()
+        # If an error was encountered, print error message and exit
+        stderr = stderr.read()
+        if stderr:
+            sys.exit(stderr)
+        return stdout.read()
         
     def __str__(self):
         return ",".join([self.name, self.dob, self.nhsid])
