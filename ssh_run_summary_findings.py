@@ -67,6 +67,7 @@ class SummaryFindings_SSH():
         # https://stackoverflow.com/questions/20951690/paramiko-ssh-exec-command-to-collect-output-says-open-channel-in-response)        
         stderr = stderr.read()
         client.close()
+        # If an error was encountered, print error message and exit
         if stderr:
             sys.exit(stderr)
 
@@ -96,9 +97,6 @@ class SummaryFindings_SSH():
                     total=self.total_bytes
                 )
             )
-
-    def __str__(self):
-        return ",".join([self.ir_id, self.ir_ir_version])
     
 def main():
     # Define and capture arguments.
