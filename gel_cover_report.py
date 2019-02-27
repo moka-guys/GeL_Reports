@@ -36,9 +36,9 @@ from PyPDF2 import PdfFileMerger
 from jinja2 import Environment, FileSystemLoader
 from ssh_run_summary_findings import SummaryFindings_SSH
 
-# Read config file
+# Read config file (must be called config.ini and stored in same directory as script)
 config = ConfigParser()
-config.read(r"F:\Moka\Files\Software\100K\config.ini")
+config.read(os.path.join(os.path.dirname(os.path.realpath(__file__)), "config.ini"))
 
 def process_arguments():
     """
