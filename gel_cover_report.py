@@ -1,7 +1,7 @@
 """
 v1.6 - AB 2019/01/22
 Requirements:
-    ODBC connection to Moka and Geneworks
+    ODBC connection to Moka
     Python 2.7
     pyodbc
     pdfkit
@@ -9,6 +9,7 @@ Requirements:
     jinja2
 
 usage: gel_cover_report.py [-h] -n NGSTestID [NGSTestID ...]
+                           [--download_summary]
 
 Creates cover page for GeL results and attaches to report provided by GeL
 
@@ -16,10 +17,14 @@ optional arguments:
   -h, --help            show this help message and exit
   -n NGSTestID [NGSTestID ...]
                         Moka NGSTestID from NGSTest table
+  --download_summary    Optional flag to download summary of findings
+                        automatically from CIP-API to
+                        P:\Bioinformatics\GeL\technical_reports
 """
 import sys
 import os
 import io
+import re
 import argparse
 import datetime
 import fnmatch
@@ -29,10 +34,11 @@ import pyodbc
 import pdfkit
 from PyPDF2 import PdfFileMerger
 from jinja2 import Environment, FileSystemLoader
+from ssh_run_summary_findings import SummaryFindings_SSH
 
-# Read config file
+# Read config file (must be called config.ini and stored in same directory as script)
 config = ConfigParser()
-config.read(r"F:\Moka\Files\Software\100K\config.ini")
+config.read(os.path.join(os.path.dirname(os.path.realpath(__file__)), "config.ini"))
 
 def process_arguments():
     """
@@ -42,6 +48,7 @@ def process_arguments():
     parser = argparse.ArgumentParser(description='Creates cover page for GeL results and attaches to report provided by GeL')
     # Define the arguments that will be taken. nargs='+' allows multiple NGSTestIDs from NGSTest table in Moka can be passed as arguments.
     parser.add_argument('-n', metavar='NGSTestID', required=True, type=int, nargs='+', help='Moka NGSTestID from NGSTest table')
+    parser.add_argument('--download_summary', action='store_true', help=r'Optional flag to download summary of findings automatically from CIP-API to P:\Bioinformatics\GeL\technical_reports')
     # Return the arguments
     return parser.parse_args()
 
@@ -289,8 +296,28 @@ def main():
                 if not data[field]:
                     # print the missing field.
                     print "ERROR: No {field} value in Moka for NGSTestID {ngs_test_id}".format(field=field, ngs_test_id=ngs_test_id)
+        # Check that interpretation request ID is in expected format
+        elif not re.search("^\d*-\d*$", data['IRID']):
+            print "ERROR: Interpretation request ID {irid} does not match pattern <id>-<version> for NGSTestID {ngs_test_id}".format(ngs_test_id=ngs_test_id, irid=data['IRID'])
         # Otherwise continue...
         else:
+            # If download_summary flag is used, call script to download the summary of findings report from CIP-API
+            # This will only work if there is only one version of the summary of findings report, as is expected for negneg cases where summary of findings was genereted programmatically
+            # Therefore put -1 at end of summary of findings filename to indicate it is version 1 (as happens when downloading manually from interpretation portal)
+            if args.download_summary:
+                ir_id = data['IRID'].split("-")[0]
+                ir_version = data['IRID'].split("-")[1]
+                try:
+                    SummaryFindings_SSH(
+                        ir_id=ir_id,
+                        ir_version=ir_version,
+                        output_path=r"\\gstt.local\shared\Genetics\Bioinformatics\GeL\technical_reports\ClinicalReport_{ir_id}-{ir_version}-1.pdf".format(ir_id=ir_id, ir_version=ir_version),
+                        header="{patient_name}    DoB {DOB}    PRU {PRU}    NHS {NHSNumber}".format(**data),
+                        SSH_config=r"\\gstt.local\apps\Moka\Files\Software\100K\ssh_credentials.txt"
+                        )
+                except Exception as e:
+                    print "ERROR: Encountered following error when downloading summary of findings for NGSTestID {ngs_test_id}: {error}".format(ngs_test_id=ngs_test_id, error=e)
+                    continue
             # Set summary of findings text based on result code If result code is Negative (1) or Negative Negative (1189679668)
             if data['result_code'] in [1, 1189679668]:
                 # 1 = Negative, 1189679668 = NegNeg
