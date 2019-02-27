@@ -282,7 +282,7 @@ def labkey_geneworks_data_match(gel_id, date_of_birth, nhsnumber):
     Returns:
         Boolean: True if input data matches LabKey.
     """
-    labkey_data = LabKey_SSH(gel_id, 'ssh_credentials.txt')
+    labkey_data = LabKey_SSH(gel_id)
     if (labkey_data.dob == date_of_birth) and (labkey_data.nhsid == nhsnumber):
         return True
     else:
