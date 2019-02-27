@@ -297,7 +297,7 @@ def main():
                     print "ERROR: No {field} value in Moka for NGSTestID {ngs_test_id}".format(field=field, ngs_test_id=ngs_test_id)
         # Check that interpretation request ID is in expected format
         elif not re.search("^\d*-\d*$", data['IRID']):
-            print "ERROR: Interpretation request ID does not match pattern <id>-<version> for NGSTestID {ngs_test_id}".format(ngs_test_id=ngs_test_id)
+            print "ERROR: Interpretation request ID {irid} does not match pattern <id>-<version> for NGSTestID {ngs_test_id}".format(ngs_test_id=ngs_test_id, irid=data['IRID'])
         # Otherwise continue...
         else:
             # If download_summary flag is used, call script to download the summary of findings report from CIP-API
