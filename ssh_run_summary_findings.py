@@ -25,15 +25,15 @@ import argparse
 from ConfigParser import ConfigParser
 import paramiko
 
-# Read config file
+# Read config file (must be called config.ini and stored in same directory as script)
 config = ConfigParser()
-config.read(r"F:\Moka\Files\Software\100K\config.ini")
+config.read(os.path.join(os.path.dirname(os.path.realpath(__file__)), "config.ini"))
 
 class SummaryFindings_SSH():
     '''
     Call summary_findings.py on the Viapath GENAPP01 server via ssh and transfer the PDF.
     '''
-    def __init__(self, ir_id, ir_version, output_path, header, SSH_config):
+    def __init__(self, ir_id, ir_version, output_path, header):
         self.ir_id = ir_id
         self.ir_version = ir_version
         self.output_path_local = output_path
@@ -111,8 +111,7 @@ def main():
         ir_id=parsed_args.ir_id,
         ir_version=parsed_args.ir_version,
         output_path=parsed_args.output_file,
-        header=parsed_args.header,
-        SSH_config=r"F:\Moka\Files\Software\100K_dev\ssh_credentials.txt"
+        header=parsed_args.header
         )
 
 if __name__ == '__main__':
