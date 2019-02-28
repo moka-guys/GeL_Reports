@@ -282,7 +282,11 @@ def labkey_geneworks_data_match(gel_id, date_of_birth, nhsnumber):
     Returns:
         Boolean: True if input data matches LabKey.
     """
-    labkey_data = LabKey_SSH(gel_id)
+    try:
+        labkey_data = LabKey_SSH(gel_id)
+    except Exception as e:
+        print "ERROR: Following error encountered getting demographics from labkey for participant ID {gel_id}: {e}".format(gel_id=gel_id, e=e)
+        return False
     if (labkey_data.dob == date_of_birth) and (labkey_data.nhsid == nhsnumber):
         return True
     else:
