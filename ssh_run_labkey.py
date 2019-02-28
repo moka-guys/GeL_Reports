@@ -22,16 +22,14 @@ class LabKey_SSH():
 
     Args:
         participant_id: A GEL participant ID
-        SSH_config: The name of a file containing comma-separated SSH details (host,username,password)
     Attributes:
         name: Patient Name
         dob: Patient date of birth in the format "DAY/MONTH/YEAR"
         nhsid: Patient nhs id
     Methods:
-        read_ssh_config(config_file): Reads SSH details from config file
         call_labkey_api(): Calls API on GENAPP using input details
     '''
-    def __init__(self, participant_id, SSH_config):
+    def __init__(self, participant_id):
         self.participant_id = participant_id
         self.ssh_host = config.get("GENAPP01", "SERVER")
         self.ssh_user = config.get("GENAPP01", "USER")
@@ -54,12 +52,13 @@ class LabKey_SSH():
                 self.participant_id
             )
         )
-        client.close()
         # If an error was encountered, print error message and exit
         stderr = stderr.read()
+        stdout = stdout.read()
+        client.close()
         if stderr:
             sys.exit(stderr)
-        return stdout.read()
+        return stdout
         
     def __str__(self):
         return ",".join([self.name, self.dob, self.nhsid])
@@ -71,7 +70,7 @@ def main():
     parsed_args = parser.parse_args()
 
     # Get patient data and print
-    patient_data = LabKey_SSH(parsed_args.pid, parsed_args.config)
+    patient_data = LabKey_SSH(parsed_args.pid)
     print(patient_data)
 
 if __name__ == '__main__':
