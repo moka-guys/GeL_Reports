@@ -48,7 +48,7 @@ class LabKey_SSH():
         client.connect(self.ssh_host, username=self.ssh_user, password=self.ssh_pwd)
         # Send command
         stdin, stdout, stderr = client.exec_command(
-            "/home/mokaguys/Apps/100k_check_labkey/LabKey.py -i {}".format(
+            "/home/mokaguys/miniconda2/envs/jellypy_py3/bin/python /home/mokaguys/Apps/100k_check_labkey/LabKey.py -i {}".format(
                 self.participant_id
             )
         )
