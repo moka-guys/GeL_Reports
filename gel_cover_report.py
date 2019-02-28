@@ -321,7 +321,7 @@ def main():
         elif not re.search("^\d+-\d+$", data['IRID']):
             print "ERROR: Interpretation request ID {irid} does not match pattern <id>-<version> for NGSTestID {ngs_test_id}".format(ngs_test_id=ngs_test_id, irid=data['IRID'])
         # Check DOB and NHSnumber in labkey and Geneworks match
-        elif not labkey_geneworks_data_match(demographics['GELID'], demographics['DOB'], demographics['NHSNumber']):
+        elif not labkey_geneworks_data_match(data['GELID'], data['DOB'], data['NHSNumber']):
             print 'ERROR: Moka demographics for NGSTestID {ngs_test_id} do not match LabKey data.'.format(ngs_test_id=ngs_test_id)
         # Otherwise continue...
         else:
@@ -336,8 +336,7 @@ def main():
                         ir_id=ir_id,
                         ir_version=ir_version,
                         output_path=r"\\gstt.local\shared\Genetics\Bioinformatics\GeL\technical_reports\ClinicalReport_{ir_id}-{ir_version}-1.pdf".format(ir_id=ir_id, ir_version=ir_version),
-                        header="{patient_name}    DoB {DOB}    PRU {PRU}    NHS {NHSNumber}".format(**data),
-                        SSH_config=r"\\gstt.local\apps\Moka\Files\Software\100K\ssh_credentials.txt"
+                        header="{patient_name}    DoB {DOB}    PRU {PRU}    NHS {NHSNumber}".format(**data)
                         )
                 except Exception as e:
                     print "ERROR: Encountered following error when downloading summary of findings for NGSTestID {ngs_test_id}: {error}".format(ngs_test_id=ngs_test_id, error=e)
