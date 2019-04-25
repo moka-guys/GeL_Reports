@@ -11,7 +11,6 @@ import os
 import argparse
 from ConfigParser import ConfigParser
 import paramiko
-import pprint
 
 # Read config file (must be called config.ini and stored in same directory as script)
 config = ConfigParser()
