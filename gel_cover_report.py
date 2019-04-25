@@ -35,6 +35,7 @@ import pdfkit
 from PyPDF2 import PdfFileMerger
 from jinja2 import Environment, FileSystemLoader
 from ssh_run_summary_findings import SummaryFindings_SSH
+from ssh_run_labkey import LabKey_SSH
 
 # Read config file (must be called config.ini and stored in same directory as script)
 config = ConfigParser()
@@ -271,6 +272,26 @@ class GelReportGenerator(object):
         with open(output_file, 'wb') as merged_report:
             merger.write(merged_report)
 
+def labkey_geneworks_data_match(gel_id, date_of_birth, nhsnumber):
+    """Check details for GEL participant ID match in LabKey.
+
+    Args:
+        gel_id (str): A gel participant ID
+        date_of_birth (str): A date of birth in the format: "DAY/MONTH/YEAR"
+        nhsnumber (str): An NHS number
+    Returns:
+        Boolean: True if input data matches LabKey.
+    """
+    try:
+        labkey_data = LabKey_SSH(gel_id)
+    except Exception as e:
+        print "ERROR: Following error encountered getting demographics from labkey for participant ID {gel_id}: {e}".format(gel_id=gel_id, e=e)
+        return False
+    if (labkey_data.dob == date_of_birth) and (labkey_data.nhsid == nhsnumber):
+        return True
+    else:
+        return False 
+
 def main():
     # Output folder for combined reports
     gel_report_output_folder = r'\\gstt.local\apps\Moka\Files\ngs\{year}\{month}'.format(
@@ -297,8 +318,11 @@ def main():
                     # print the missing field.
                     print "ERROR: No {field} value in Moka for NGSTestID {ngs_test_id}".format(field=field, ngs_test_id=ngs_test_id)
         # Check that interpretation request ID is in expected format
-        elif not re.search("^\d*-\d*$", data['IRID']):
+        elif not re.search("^\d+-\d+$", data['IRID']):
             print "ERROR: Interpretation request ID {irid} does not match pattern <id>-<version> for NGSTestID {ngs_test_id}".format(ngs_test_id=ngs_test_id, irid=data['IRID'])
+        # Check DOB and NHSnumber in labkey and Geneworks match
+        elif not labkey_geneworks_data_match(data['GELID'], data['DOB'], data['NHSNumber']):
+            print 'ERROR: Moka demographics for NGSTestID {ngs_test_id} do not match LabKey data.'.format(ngs_test_id=ngs_test_id)
         # Otherwise continue...
         else:
             # If download_summary flag is used, call script to download the summary of findings report from CIP-API
@@ -312,8 +336,7 @@ def main():
                         ir_id=ir_id,
                         ir_version=ir_version,
                         output_path=r"\\gstt.local\shared\Genetics\Bioinformatics\GeL\technical_reports\ClinicalReport_{ir_id}-{ir_version}-1.pdf".format(ir_id=ir_id, ir_version=ir_version),
-                        header="{patient_name}    DoB {DOB}    PRU {PRU}    NHS {NHSNumber}".format(**data),
-                        SSH_config=r"\\gstt.local\apps\Moka\Files\Software\100K\ssh_credentials.txt"
+                        header="{patient_name}    DoB {DOB}    PRU {PRU}    NHS {NHSNumber}".format(**data)
                         )
                 except Exception as e:
                     print "ERROR: Encountered following error when downloading summary of findings for NGSTestID {ngs_test_id}: {error}".format(ngs_test_id=ngs_test_id, error=e)
