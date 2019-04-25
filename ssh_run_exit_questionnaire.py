@@ -4,18 +4,15 @@ Requirements:
     Python 2.7
     paramiko
 
-usage: ssh_run_exit_questionnaire.py [-h] --ir_id IR_ID --ir_version
-                                     IR_VERSION --user USER
+usage: ssh_run_exit_questionnaire.py [-h] --ir_id IR_ID --user USER
 
 Submits a negneg clinical report and exit questionnaire for given
 interpretation request
 
 optional arguments:
-  -h, --help            show this help message and exit
-  --ir_id IR_ID         Interpretation request ID
-  --ir_version IR_VERSION
-                        Interpretation request version
-  --user USER           cip-api username
+  -h, --help     show this help message and exit
+  --ir_id IR_ID  Interpretation request ID with version (e.g. 12345-1)
+  --user USER    cip-api username
 """
 import os
 import sys
@@ -32,9 +29,8 @@ class ExitQuestionnaire_SSH():
     '''
     Call summary_findings.py on the Viapath GENAPP01 server via ssh and transfer the PDF.
     '''
-    def __init__(self, ir_id, ir_version, user):
+    def __init__(self, ir_id, user):
         self.ir_id = ir_id
-        self.ir_version = ir_version
         self.user = user
         self.ssh_host = config.get("GENAPP01", "SERVER")
         self.ssh_user = config.get("GENAPP01", "USER")
@@ -48,9 +44,8 @@ class ExitQuestionnaire_SSH():
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         client.connect(self.ssh_host, username=self.ssh_user, password=self.ssh_pwd)
-        command = "/home/mokaguys/miniconda2/envs/jellypy_py3/bin/python /home/mokaguys/Apps/100K_exit_questionnaire/exit_questionnaire.py -i {ir_id}-{ir_version} -r {user} -d {date}".format(
+        command = "/home/mokaguys/miniconda2/envs/jellypy_py3/bin/python /home/mokaguys/Apps/100K_exit_questionnaire/exit_questionnaire.py -i {ir_id} -r {user} -d {date}".format(
                 ir_id=self.ir_id,
-                ir_version=self.ir_version,
                 user=self.user,
                 date=datetime.datetime.now().strftime(r'%Y-%m-%d')
             )
@@ -68,13 +63,11 @@ class ExitQuestionnaire_SSH():
 def main():
     # Define and capture arguments.
     parser = argparse.ArgumentParser(description='Submits a negneg clinical report and exit questionnaire for given interpretation request')
-    parser.add_argument('--ir_id', required=True, help='Interpretation request ID')
-    parser.add_argument('--ir_version', required=True, help='Interpretation request version')
+    parser.add_argument('--ir_id', required=True, help='Interpretation request ID with version (e.g. 12345-1)')
     parser.add_argument('--user', required=True, help='cip-api username')
     parsed_args = parser.parse_args()
     s = ExitQuestionnaire_SSH(
         ir_id=parsed_args.ir_id,
-        ir_version=parsed_args.ir_version,
         user=parsed_args.user
         )
 
