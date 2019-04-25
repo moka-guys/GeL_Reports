@@ -8,7 +8,7 @@ Requirements:
     PyPDF2
     jinja2
 
-usage: gel_cover_report.py [-h] -n NGSTestID [NGSTestID ...]
+usage: gel_cover_report.py [-h] -n NGSTestID [NGSTestID ...] [--submit_exit_q]
                            [--download_summary]
 
 Creates cover page for GeL results and attaches to report provided by GeL
@@ -17,6 +17,8 @@ optional arguments:
   -h, --help            show this help message and exit
   -n NGSTestID [NGSTestID ...]
                         Moka NGSTestID from NGSTest table
+  --submit_exit_q       Optional flag to submit a negneg clinical report and
+                        exit questionnaire automatically to CIP-API
   --download_summary    Optional flag to download summary of findings
                         automatically from CIP-API to
                         P:\Bioinformatics\GeL\technical_reports
@@ -34,6 +36,7 @@ import pyodbc
 import pdfkit
 from PyPDF2 import PdfFileMerger
 from jinja2 import Environment, FileSystemLoader
+from ssh_run_exit_questionnaire import ExitQuestionnaire_SSH
 from ssh_run_summary_findings import SummaryFindings_SSH
 from ssh_run_labkey import LabKey_SSH
 
@@ -49,6 +52,7 @@ def process_arguments():
     parser = argparse.ArgumentParser(description='Creates cover page for GeL results and attaches to report provided by GeL')
     # Define the arguments that will be taken. nargs='+' allows multiple NGSTestIDs from NGSTest table in Moka can be passed as arguments.
     parser.add_argument('-n', metavar='NGSTestID', required=True, type=int, nargs='+', help='Moka NGSTestID from NGSTest table')
+    parser.add_argument('--submit_exit_q', action='store_true', help=r'Optional flag to submit a negneg clinical report and exit questionnaire automatically to CIP-API')
     parser.add_argument('--download_summary', action='store_true', help=r'Optional flag to download summary of findings automatically from CIP-API to P:\Bioinformatics\GeL\technical_reports')
     # Return the arguments
     return parser.parse_args()
@@ -325,6 +329,18 @@ def main():
             print 'ERROR: Moka demographics for NGSTestID {ngs_test_id} do not match LabKey data.'.format(ngs_test_id=ngs_test_id)
         # Otherwise continue...
         else:
+            # If submit_exit_q flag is used, call script to submit a negneg clinical report and exit questionnaire to the CIP-API
+            # This shouldn't be used if either a summary of findings or exit questionnaire has already be created for this case (will fail if so)
+            if args.submit_exit_q:
+                ir_id = data['IRID']
+                try:
+                    ExitQuestionnaire_SSH(
+                        ir_id=ir_id,
+                        user='jahn'
+                        )
+                except Exception as e:
+                    print "ERROR: Encountered following error when submitting clinical report and exit questionnaire for NGSTestID {ngs_test_id}: {error}".format(ngs_test_id=ngs_test_id, error=e)
+                    continue
             # If download_summary flag is used, call script to download the summary of findings report from CIP-API
             # This will only work if there is only one version of the summary of findings report, as is expected for negneg cases where summary of findings was genereted programmatically
             # Therefore put -1 at end of summary of findings filename to indicate it is version 1 (as happens when downloading manually from interpretation portal)
