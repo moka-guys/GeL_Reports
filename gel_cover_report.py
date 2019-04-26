@@ -204,7 +204,7 @@ class MokaQueryExecuter(object):
         Pulls out details from Moka needed to populate the cover page. 
         """
         data_sql = (
-            'SELECT NGSTest.NGSTestID, NGSTest.InternalPatientID, NGSTest.ResultCode, Checker.Name AS clinician_name, Checker.ReportEmail, Item_Address.Item AS clinician_address, '
+            'SELECT NGSTest.NGSTestID, NGSTest.BlockAutomatedReporting, NGSTest.InternalPatientID, NGSTest.ResultCode, Checker.Name AS clinician_name, Checker.ReportEmail, Item_Address.Item AS clinician_address, '
             '"gwv-patientlinked".FirstName, "gwv-patientlinked".LastName, "gwv-patientlinked".DoB, "gwv-patientlinked".Gender, "gwv-patientlinked".NHSNo, '
             '"gwv-patientlinked".PatientTrustID, NGSTest.GELProbandID, NGSTest.IRID '
             'FROM (((NGSTest INNER JOIN Patients ON NGSTest.InternalPatientID = Patients.InternalPatientID) '
@@ -218,6 +218,7 @@ class MokaQueryExecuter(object):
         if row:
             # Populate data dictionaries with values returned by query
             data = {
+                'block_auto_report': row.BlockAutomatedReporting
                 'clinician': row.clinician_name,
                 'clinician_report_email': row.ReportEmail,
                 'clinician_address': row.clinician_address,
@@ -321,6 +322,8 @@ def main():
                 if not data[field]:
                     # print the missing field.
                     print "ERROR: No {field} value in Moka for NGSTestID {ngs_test_id}".format(field=field, ngs_test_id=ngs_test_id)
+        elif data.block_auto_report:
+            print "ERROR: Automated reporting blocked in Moka for NGSTestID {ngs_test_id}".format(ngs_test_id=ngs_test_id)
         # Check that interpretation request ID is in expected format
         elif not re.search("^\d+-\d+$", data['IRID']):
             print "ERROR: Interpretation request ID {irid} does not match pattern <id>-<version> for NGSTestID {ngs_test_id}".format(ngs_test_id=ngs_test_id, irid=data['IRID'])
