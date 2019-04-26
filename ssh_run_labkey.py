@@ -8,6 +8,7 @@ Usage:
     ssh_run_labkey.py -i participant_id -c config_file
 """
 import os
+import sys
 import argparse
 from ConfigParser import ConfigParser
 import paramiko
