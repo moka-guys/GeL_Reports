@@ -116,9 +116,9 @@ class GeLGeneworksCharge(object):
             self.test_id = rows[0].TestID
             self.specimen_id = rows[0].SpecimenTrustID
         elif len(rows) == 0:
-            print "ERROR: Unable to find GeL test in Geneworks for {pru}.".format(pru=pru)
+            print "ERROR\tUnable to find GeL test in Geneworks for {pru}.".format(pru=pru)
         elif len(rows) > 1:
-            print "ERROR: Multiple GeL tests found in Geneworks for {pru}.".format(pru=pru)
+            print "ERROR\tMultiple GeL tests found in Geneworks for {pru}.".format(pru=pru)
 
     def insert_charge(self):
         """
@@ -170,13 +170,13 @@ class GeLGeneworksCharge(object):
                 # Check that one and only one record has been updated: 
                 # Print error message if anything other than 1 record number is returned from the query
                 if len(rows) != 1:
-                    print "ERROR: When inserting charge for {pru}, {records} were updated.".format(pru=self.pru, records=len(rows))
+                    print "ERROR\tWhen inserting charge for {pru}, {records} were updated.".format(pru=self.pru, records=len(rows))
             except:
                 # Error message if theres an error inserting charge
-                print "ERROR: Encountered error when inserting charge for {pru}.".format(pru=self.pru)
+                print "ERROR\tEncountered error when inserting charge for {pru}.".format(pru=self.pru)
 
         else:
-            print "ERROR: Unable to insert charge for {pru}. Test ID or Specimen ID not determined. Please add manually.".format(pru=self.pru)
+            print "ERROR\tUnable to insert charge for {pru}. Test ID or Specimen ID not determined. Please add manually.".format(pru=self.pru)
             
         
 
@@ -218,7 +218,7 @@ class MokaQueryExecuter(object):
         if row:
             # Populate data dictionaries with values returned by query
             data = {
-                'block_auto_report': row.BlockAutomatedReporting
+                'block_auto_report': row.BlockAutomatedReporting,
                 'clinician': row.clinician_name,
                 'clinician_report_email': row.ReportEmail,
                 'clinician_address': row.clinician_address,
@@ -290,7 +290,7 @@ def labkey_geneworks_data_match(gel_id, date_of_birth, nhsnumber):
     try:
         labkey_data = LabKey_SSH(gel_id)
     except Exception as e:
-        print "ERROR: Following error encountered getting demographics from labkey for participant ID {gel_id}: {e}".format(gel_id=gel_id, e=e)
+        print "ERROR\tFollowing error encountered getting demographics from labkey for participant ID {gel_id}: {e}".format(gel_id=gel_id, e=e)
         return False
     if (labkey_data.dob == date_of_birth) and (labkey_data.nhsid == nhsnumber):
         return True
@@ -305,6 +305,8 @@ def main():
         )
     # Get command line arguments
     args = process_arguments()
+    # Print list of NGStestIDs for processing:
+    print ("INFO\t{num_tests} NGS test IDs for processing: {testIDs}").format(num_tests=len(args.n), testIDs=args.n)
     # Create MokaQueryExecuter object
     moka = MokaQueryExecuter()
     # Loop through each Moka NGStestID supplied as an argument
@@ -313,7 +315,7 @@ def main():
         data = moka.get_data(ngs_test_id)
         # If no data are returned, print an error message
         if not data:
-            print 'ERROR: No results returned from Moka data query for NGSTestID {ngs_test_id}. Check there are records in all inner joined tables (eg clinician address in checker table)'.format(ngs_test_id=ngs_test_id)
+            print 'ERROR\tNo results returned from Moka data query for NGSTestID {ngs_test_id}. Check there are records in all inner joined tables (eg clinician address in checker table)'.format(ngs_test_id=ngs_test_id)
         # identify any missing values. if any of the values in the dict are Null (None)
         elif None in data.values():
             # loop through each key
@@ -321,15 +323,15 @@ def main():
                 # if the value is none
                 if not data[field]:
                     # print the missing field.
-                    print "ERROR: No {field} value in Moka for NGSTestID {ngs_test_id}".format(field=field, ngs_test_id=ngs_test_id)
+                    print "ERROR\tNo {field} value in Moka for NGSTestID {ngs_test_id}".format(field=field, ngs_test_id=ngs_test_id)
         elif data.block_auto_report:
-            print "ERROR: Automated reporting blocked in Moka for NGSTestID {ngs_test_id}".format(ngs_test_id=ngs_test_id)
+            print "ERROR\tAutomated reporting blocked in Moka for NGSTestID {ngs_test_id}".format(ngs_test_id=ngs_test_id)
         # Check that interpretation request ID is in expected format
         elif not re.search("^\d+-\d+$", data['IRID']):
-            print "ERROR: Interpretation request ID {irid} does not match pattern <id>-<version> for NGSTestID {ngs_test_id}".format(ngs_test_id=ngs_test_id, irid=data['IRID'])
+            print "ERROR\tInterpretation request ID {irid} does not match pattern <id>-<version> for NGSTestID {ngs_test_id}".format(ngs_test_id=ngs_test_id, irid=data['IRID'])
         # Check DOB and NHSnumber in labkey and Geneworks match
         elif not labkey_geneworks_data_match(data['GELID'], data['DOB'], data['NHSNumber']):
-            print 'ERROR: Moka demographics for NGSTestID {ngs_test_id} do not match LabKey data.'.format(ngs_test_id=ngs_test_id)
+            print 'ERROR\tMoka demographics for NGSTestID {ngs_test_id} do not match LabKey data.'.format(ngs_test_id=ngs_test_id)
         # Otherwise continue...
         else:
             # If submit_exit_q flag is used, call script to submit a negneg clinical report and exit questionnaire to the CIP-API
@@ -342,7 +344,7 @@ def main():
                         user='jahn'
                         )
                 except Exception as e:
-                    print "ERROR: Encountered following error when submitting clinical report and exit questionnaire for NGSTestID {ngs_test_id}: {error}".format(ngs_test_id=ngs_test_id, error=e)
+                    print "ERROR\tEncountered following error when submitting clinical report and exit questionnaire for NGSTestID {ngs_test_id}: {error}".format(ngs_test_id=ngs_test_id, error=e)
                     continue
             # If download_summary flag is used, call script to download the summary of findings report from CIP-API
             # This will only work if there is only one version of the summary of findings report, as is expected for negneg cases where summary of findings was genereted programmatically
@@ -358,7 +360,7 @@ def main():
                         header="{patient_name}    DoB {DOB}    PRU {PRU}    NHS {NHSNumber}".format(**data)
                         )
                 except Exception as e:
-                    print "ERROR: Encountered following error when downloading summary of findings for NGSTestID {ngs_test_id}: {error}".format(ngs_test_id=ngs_test_id, error=e)
+                    print "ERROR\tEncountered following error when downloading summary of findings for NGSTestID {ngs_test_id}: {error}".format(ngs_test_id=ngs_test_id, error=e)
                     continue
             # Set summary of findings text based on result code If result code is Negative (1) or Negative Negative (1189679668)
             if data['result_code'] in [1, 1189679668]:
@@ -373,7 +375,7 @@ def main():
                 )                
             else:
                 # If result code not known, print error and skip to the next case
-                print 'ERROR: Unknown result code for NGSTestID {ngs_test_id}.'.format(ngs_test_id=ngs_test_id)
+                print 'ERROR\tUnknown result code for NGSTestID {ngs_test_id}.'.format(ngs_test_id=ngs_test_id)
                 continue
             # Create GelReportGenerator object
             g = GelReportGenerator(path_to_wkhtmltopdf=r'\\gstt.local\shared\Genetics_Data2\Array\Software\wkhtmltopdf\bin\wkhtmltopdf.exe')            
@@ -398,11 +400,11 @@ def main():
             # if there is more than one report for this case
             if len(list_of_html_reports) > 1:
                 # print error message
-                print 'ERROR: Multiple ({file_count}) versions of the HTML report exist for IR-ID {ir_id}. Ensure only the correct version exists in {gel_original_report_folder}.'.format(file_count=len(list_of_html_reports), ir_id=data['IRID'], gel_original_report_folder=gel_original_report_folder)
+                print 'ERROR\tMultiple ({file_count}) versions of the HTML report exist for IR-ID {ir_id}. Ensure only the correct version exists in {gel_original_report_folder}.'.format(file_count=len(list_of_html_reports), ir_id=data['IRID'], gel_original_report_folder=gel_original_report_folder)
             # if the original GeL report is not found, 
             elif len(list_of_html_reports) < 1:
                 # print an error message
-                print 'ERROR: Original GeL report not found for IR-ID {ir_id}. Please ensure it has been saved as PDF with the following filepath: {gel_original_report}'.format(gel_original_report=os.path.join(gel_original_report_folder, gel_original_report_search_name), ir_id=data['IRID'])
+                print 'ERROR\tOriginal GeL report not found for IR-ID {ir_id}. Please ensure it has been saved as PDF with the following filepath: {gel_original_report}'.format(gel_original_report=os.path.join(gel_original_report_folder, gel_original_report_search_name), ir_id=data['IRID'])
             else:
                 # If only one report found create the name of the report using the file identified using the wildcard
                 gel_original_report = os.path.join(gel_original_report_folder, list_of_html_reports[0])
@@ -418,9 +420,9 @@ def main():
                         today_date=datetime.datetime.now().strftime(r'%Y%m%d %H:%M:%S %p')
                         )
                 moka.execute_query(ngstestfile_insert_sql)
-                # Update the check2, reporter (check3) and authoriser (check4) to the logged in user, and status to authorisation for NGSTest
+                # Update the check2, reporter (check3) and authoriser (check4) to the logged in user, and status to Complete for NGSTest
                 ngstest_update_sql = (
-                    "UPDATE n SET n.Check2ID = c.Check1ID, n.Check2Date = '{today_date}', n.Check3ID = c.Check1ID, n.Check3Date = '{today_date}', n.Check4ID = c.Check1ID, n.Check4Date = '{today_date}', n.StatusID = 1202218814 "
+                    "UPDATE n SET n.Check2ID = c.Check1ID, n.Check2Date = '{today_date}', n.Check3ID = c.Check1ID, n.Check3Date = '{today_date}', n.Check4ID = c.Check1ID, n.Check4Date = '{today_date}', n.StatusID = 4 "
                     "FROM NGSTest AS n, Checker AS c WHERE c.UserName = '{username}' AND n.NGSTestID = {ngs_test_id};"
                     ).format(
                         today_date=datetime.datetime.now().strftime(r'%Y%m%d %H:%M:%S %p'), 
@@ -428,10 +430,17 @@ def main():
                         ngs_test_id=ngs_test_id
                         )
                 moka.execute_query(ngstest_update_sql)
+                # Update the patient status to complete
+                ngstest_update_sql = (
+                    "UPDATE Patients SET Patients.s_StatusOverall = 4 WHERE InternalPatientID = {internal_patient_id};".format(
+                        internal_patient_id=data['internal_patient_id']        
+                    )
+
+                moka.execute_query(ngstest_update_sql)
                 # Record in patient log
                 patientlog_insert_sql = (
                     "INSERT INTO PatientLog (InternalPatientID, LogEntry, Date, Login, PCName) "
-                    "VALUES ({internal_patient_id},  'NGS: 100k results letter generated for interpretation request {IRID}', '{today_date}', '{username}', '{computer}');"
+                    "VALUES ({internal_patient_id},  'NGS: Negative 100k results letter automatically generated for interpretation request {IRID}. Test and Patient status set to complete.', '{today_date}', '{username}', '{computer}');"
                     ).format(
                         internal_patient_id=data['internal_patient_id'],
                         IRID=data['IRID'],
@@ -463,8 +472,11 @@ def main():
                 g.get_test_details(data['PRU'])
                 g.insert_charge()
             # Print output location of reports
-            print '\nGenerated reports can be found in: {gel_report_output_folder}'.format(gel_report_output_folder=gel_report_output_folder)
-        
+            print 'SUCCESS\tGenerated report for IRID {ir_id} NGStestID {ngs_test_id} can be found in: {gel_report_output_folder}'.format(
+                ngs_test_id=ngs_test_id, 
+                gel_report_output_folder=gel_report_output_folder,
+                ir_id=data['IRID']
+                )
 
 if __name__ == '__main__':
     main()
