@@ -418,9 +418,9 @@ def main():
                         today_date=datetime.datetime.now().strftime(r'%Y%m%d %H:%M:%S %p')
                         )
                 moka.execute_query(ngstestfile_insert_sql)
-                # Update the status for NGSTest
+                # Update the check2, reporter (check3) and authoriser (check4) to the logged in user, and status to authorisation for NGSTest
                 ngstest_update_sql = (
-                    "UPDATE n SET n.Check1ID = c.Check1ID, n.Check1Date = '{today_date}', n.StatusID = 1202218814 "
+                    "UPDATE n SET n.Check2ID = c.Check1ID, n.Check2Date = '{today_date}', n.Check3ID = c.Check1ID, n.Check3Date = '{today_date}', n.Check4ID = c.Check1ID, n.Check4Date = '{today_date}', n.StatusID = 1202218814 "
                     "FROM NGSTest AS n, Checker AS c WHERE c.UserName = '{username}' AND n.NGSTestID = {ngs_test_id};"
                     ).format(
                         today_date=datetime.datetime.now().strftime(r'%Y%m%d %H:%M:%S %p'), 
