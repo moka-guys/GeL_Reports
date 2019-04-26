@@ -176,9 +176,7 @@ class GeLGeneworksCharge(object):
                 print "ERROR\tEncountered error when inserting charge for {pru}.".format(pru=self.pru)
 
         else:
-            print "ERROR\tUnable to insert charge for {pru}. Test ID or Specimen ID not determined. Please add manually.".format(pru=self.pru)
-            
-        
+            print "ERROR\tUnable to insert charge for {pru}. Test ID or Specimen ID not determined. Please add manually.".format(pru=self.pru)        
 
 class MokaQueryExecuter(object):
     def __init__(self):
@@ -472,12 +470,12 @@ def main():
                 g = GeLGeneworksCharge()
                 g.get_test_details(data['PRU'])
                 g.insert_charge()
-            # Print output location of reports
-            print 'SUCCESS\tGenerated report for IRID {ir_id} NGStestID {ngs_test_id} can be found in: {gel_report_output_folder}'.format(
-                ngs_test_id=ngs_test_id, 
-                gel_report_output_folder=gel_report_output_folder,
-                ir_id=data['IRID']
-                )
+                # Print output location of reports
+                print 'SUCCESS\tGenerated report for IRID {ir_id} NGStestID {ngs_test_id} can be found in: {gel_report_output_folder}'.format(
+                    ngs_test_id=ngs_test_id, 
+                    gel_report_output_folder=gel_report_output_folder,
+                    ir_id=data['IRID']
+                    )
 
 if __name__ == '__main__':
     main()
