@@ -289,7 +289,7 @@ def labkey_geneworks_data_match(gel_id, date_of_birth, nhsnumber):
     """
     try:
         labkey_data = LabKey_SSH(gel_id)
-    except Exception as e:
+    except BaseException as e:
         print "ERROR\tFollowing error encountered getting demographics from labkey for participant ID {gel_id}: {e}".format(gel_id=gel_id, e=e)
         return False
     if (labkey_data.dob == date_of_birth) and (labkey_data.nhsid == nhsnumber):
@@ -324,7 +324,7 @@ def main():
                 if not data[field]:
                     # print the missing field.
                     print "ERROR\tNo {field} value in Moka for NGSTestID {ngs_test_id}".format(field=field, ngs_test_id=ngs_test_id)
-        elif data.block_auto_report:
+        elif data['block_auto_report']:
             print "ERROR\tAutomated reporting blocked in Moka for NGSTestID {ngs_test_id}".format(ngs_test_id=ngs_test_id)
         # Check that interpretation request ID is in expected format
         elif not re.search("^\d+-\d+$", data['IRID']):
@@ -343,7 +343,7 @@ def main():
                         ir_id=ir_id,
                         user='jahn'
                         )
-                except Exception as e:
+                except BaseException as e:
                     print "ERROR\tEncountered following error when submitting clinical report and exit questionnaire for NGSTestID {ngs_test_id}: {error}".format(ngs_test_id=ngs_test_id, error=e)
                     continue
             # If download_summary flag is used, call script to download the summary of findings report from CIP-API
@@ -359,7 +359,7 @@ def main():
                         output_path=r"\\gstt.local\shared\Genetics\Bioinformatics\GeL\technical_reports\ClinicalReport_{ir_id}-{ir_version}-1.pdf".format(ir_id=ir_id, ir_version=ir_version),
                         header="{patient_name}    DoB {DOB}    PRU {PRU}    NHS {NHSNumber}".format(**data)
                         )
-                except Exception as e:
+                except BaseException as e:
                     print "ERROR\tEncountered following error when downloading summary of findings for NGSTestID {ngs_test_id}: {error}".format(ngs_test_id=ngs_test_id, error=e)
                     continue
             # Set summary of findings text based on result code If result code is Negative (1) or Negative Negative (1189679668)
@@ -434,6 +434,7 @@ def main():
                 ngstest_update_sql = (
                     "UPDATE Patients SET Patients.s_StatusOverall = 4 WHERE InternalPatientID = {internal_patient_id};".format(
                         internal_patient_id=data['internal_patient_id']        
+                        )
                     )
 
                 moka.execute_query(ngstest_update_sql)
