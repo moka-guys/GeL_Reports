@@ -51,6 +51,7 @@ def process_arguments():
     # Create ArgumentParser object. Description message will be displayed as part of help message if script is run with -h flag
     parser = argparse.ArgumentParser(description='Creates cover page for GeL results and attaches to report provided by GeL')
     # Define the arguments that will be taken. nargs='+' allows multiple NGSTestIDs from NGSTest table in Moka can be passed as arguments.
+    # action='store_true' makes the argument into a boolean flag (i.e. if it is used, it will be set to true, if it isn't used, it will be set to false)
     parser.add_argument('-n', metavar='NGSTestID', required=True, type=int, nargs='+', help='Moka NGSTestID from NGSTest table')
     parser.add_argument('--submit_exit_q', action='store_true', help=r'Optional flag to submit a negneg clinical report and exit questionnaire automatically to CIP-API')
     parser.add_argument('--download_summary', action='store_true', help=r'Optional flag to download summary of findings automatically from CIP-API to P:\Bioinformatics\GeL\technical_reports')
@@ -287,6 +288,7 @@ def labkey_geneworks_data_match(gel_id, date_of_birth, nhsnumber):
     """
     try:
         labkey_data = LabKey_SSH(gel_id)
+    # Use BaseException so that SystemExit exceptions are caught
     except BaseException as e:
         print "ERROR\tFollowing error encountered getting demographics from labkey for participant ID {gel_id}: {e}".format(gel_id=gel_id, e=e)
         return False
@@ -341,6 +343,7 @@ def main():
                         ir_id=ir_id,
                         user='jahn'
                         )
+                # Use BaseException so that SystemExit exceptions are caught
                 except BaseException as e:
                     print "ERROR\tEncountered following error when submitting clinical report and exit questionnaire for NGSTestID {ngs_test_id}: {error}".format(ngs_test_id=ngs_test_id, error=e)
                     continue
@@ -357,6 +360,7 @@ def main():
                         output_path=r"\\gstt.local\shared\Genetics\Bioinformatics\GeL\technical_reports\ClinicalReport_{ir_id}-{ir_version}-1.pdf".format(ir_id=ir_id, ir_version=ir_version),
                         header="{patient_name}    DoB {DOB}    PRU {PRU}    NHS {NHSNumber}".format(**data)
                         )
+                # Use BaseException so that SystemExit exceptions are caught
                 except BaseException as e:
                     print "ERROR\tEncountered following error when downloading summary of findings for NGSTestID {ngs_test_id}: {error}".format(ngs_test_id=ngs_test_id, error=e)
                     continue
