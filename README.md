@@ -2,11 +2,12 @@
 
 This script is used to attach a cover page to the summary of findings downloaded from GeL. It is used for negative cases that do not require a Geneworks report.
 
-Prior to running the script, the GeL case must be entered into Moka (using form `88005_GEL_InsertPatient`) and the summary of findings PDF must be saved in `P:\Bioinformatics\GeL\technical_reports`.
+Prior to running the script, the GeL case must be entered into Moka (using form `88005_GEL_InsertPatient` or the automed negneg scripts). If not using the --submit_exit_q and --download_summary flags, the case must be closed through the interpretation portal and the summary of findings PDF must be saved in `P:\Bioinformatics\GeL\technical_reports`.
 
 The script can be used stand alone, or for negative negative cases can be run from Moka using form `88009_GEL_neg_neg_list`.
 
 This script performs the following steps:
+* Optionally submits negneg summary of findings and exit questionnaire
 * Optionally downloads summary of findings PDF 
 * Populates the cover page using patient demographics from Moka and Geneworks (An appropriate pre-defined summary is included whihc is based on the Moka result code)
 * Updates checker and test status in Moka
@@ -33,7 +34,7 @@ The script is called by passing any number of NGS test IDs as input arguments.
 If there is an issue with a case, an error message will be printed to terminal and the script will simply skip to the next case. This is to prevent the whole batch failing when there's an issue with one individual case. It's therefore important to check the output to avoid cases being missed.
 
 ```
-usage: gel_cover_report.py [-h] -n NGSTestID [NGSTestID ...]
+usage: gel_cover_report.py [-h] -n NGSTestID [NGSTestID ...] [--submit_exit_q]
                            [--download_summary]
 
 Creates cover page for GeL results and attaches to report provided by GeL
@@ -42,6 +43,8 @@ optional arguments:
   -h, --help            show this help message and exit
   -n NGSTestID [NGSTestID ...]
                         Moka NGSTestID from NGSTest table
+  --submit_exit_q       Optional flag to submit a negneg clinical report and
+                        exit questionnaire automatically to CIP-API
   --download_summary    Optional flag to download summary of findings
                         automatically from CIP-API to
                         P:\Bioinformatics\GeL\technical_reports
