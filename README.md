@@ -2,7 +2,7 @@
 
 This script is used to attach a cover page to the summary of findings downloaded from GeL. It is used for negative cases that do not require a Geneworks report.
 
-Prior to running the script, the GeL case must be entered into Moka (using form `88005_GEL_InsertPatient`) and the summary of findings PDF must be saved in `P:\Bioinformatics\GeL\technical_reports`.
+Prior to running the script, the GeL case must be entered into Moka (using form `88005_GEL_InsertPatient` or the automed negneg scripts). If not using the --submit_exit_q and --download_summary flags, the case must be closed through the interpretation portal and the summary of findings PDF must be saved in `P:\Bioinformatics\GeL\technical_reports`.
 
 The script can be used stand alone, or for negative negative cases can be run from Moka using form `88009_GEL_neg_neg_list`.
 
