@@ -22,6 +22,7 @@ optional arguments:
 import os
 import sys
 import argparse
+import re
 from ConfigParser import ConfigParser
 import paramiko
 
@@ -60,7 +61,11 @@ class SummaryFindings_SSH():
                 output_path=self.output_path_server
             )
         if self.header:
-            command += " --header '{header}'".format(header=self.header)
+            # Escape any characters in header that could break the bash command even when in double quotes, 
+            # see point 3.3.4 here: http://tldp.org/LDP/Bash-Beginners-Guide/html/sect_03_03.html
+            self.header = re.sub(r'(["$`\\])', r"\\\1", self.header)
+            # Append header to command
+            command += ' --header "{header}"'.format(header=self.header)
         # Execute command to download summary of findings on the server
         stdin, stdout, stderr = client.exec_command(command)
         # Call .read() on paramiko StderrFile object 
