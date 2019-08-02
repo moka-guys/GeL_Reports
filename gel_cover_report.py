@@ -1,5 +1,5 @@
 """
-v1.6 - AB 2019/01/22
+v1.7 - AB 2019/08/02
 Requirements:
     ODBC connection to Moka
     Python 2.7
@@ -292,7 +292,7 @@ def labkey_geneworks_data_match(gel_id, date_of_birth, nhsnumber):
     except BaseException as e:
         print "ERROR\tFollowing error encountered getting demographics from labkey for participant ID {gel_id}: {e}".format(gel_id=gel_id, e=e)
         return False
-    if (labkey_data.dob == date_of_birth) and (labkey_data.nhsid == nhsnumber):
+    if (labkey_data.dob == date_of_birth) and (labkey_data.nhsid.replace(" ", "") == nhsnumber.replace(" ", "")):
         return True
     else:
         return False 
