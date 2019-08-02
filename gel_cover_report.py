@@ -227,7 +227,7 @@ class MokaQueryExecuter(object):
                 'internal_patient_id': row.InternalPatientID,
                 'patient_name': '{first_name} {last_name}'.format(first_name=row.FirstName, last_name=row.LastName),
                 'sex': row.Gender,
-                'DOB': row.DoB.strftime(r'%d/%m/%Y'), # Extract date from datetime field in format dd/mm/yyyy
+                'DOB': row.DoB,
                 'NHSNumber': row.NHSNo,
                 'PRU': row.PatientTrustID,
                 'GELID': row.GELProbandID,
@@ -334,6 +334,8 @@ def main():
             print "ERROR\tInterpretation request ID {irid} does not match pattern <id>-<version> for NGSTestID {ngs_test_id}".format(ngs_test_id=ngs_test_id, irid=data['IRID'])
         # Otherwise continue...
         else:
+            # Convert DoB to string in format dd/mm/yyyy
+            data['DOB'] = data['DOB'].strftime(r'%d/%m/%Y')
             # If skip_labkey flag not used, check DOB and NHSnumber in labkey and Geneworks match. Skip to next case if they don't.
             if args.skip_labkey:
                 pass
