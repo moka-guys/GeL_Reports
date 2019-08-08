@@ -300,6 +300,34 @@ def labkey_geneworks_data_match(gel_id, date_of_birth, nhsnumber):
     else:
         return False 
 
+
+def null_fields(data_dict):
+    '''
+    Args:
+        Dictionary
+    Returns: 
+        List of field names containing Null (None) values  
+    '''
+    null_field_list = []
+    for field, value in data_dict.iteritems():
+        if value == None:
+            null_field_list.append(field)
+    return null_field_list
+
+
+def remove_values(data_list, *args):
+    '''
+    Args:
+        List containing data
+        Values to be removed from list
+    Returns:
+        List with values removed
+    '''
+    for value in args:
+        if value in data_list:
+            data_list.remove(value)
+    return data_list
+
 def main():
     # Output folder for combined reports
     gel_report_output_folder = r'\\gstt.local\apps\Moka\Files\ngs\{year}\{month}'.format(
@@ -319,14 +347,15 @@ def main():
         # If no data are returned, print an error message
         if not data:
             print 'ERROR\tNo results returned from Moka data query for NGSTestID {ngs_test_id}. Check there are records in all inner joined tables (eg clinician address in checker table)'.format(ngs_test_id=ngs_test_id)
-        # identify any missing values. if any of the values in the dict are Null (None)
-        elif None in data.values():
-            # loop through each key
-            for field in data:
-                # if the value is none
-                if not data[field]:
-                    # print the missing field.
-                    print "ERROR\tNo {field} value in Moka for NGSTestID {ngs_test_id}".format(field=field, ngs_test_id=ngs_test_id)
+        # Check for any missing fields (Nulls) in the returned data. Error and skip this sample if required fields are missing.
+        # If the skip_labkey flag has been used, we don't need to worry about missing DOB or NHS number (which are sometimes missing for e.g. fetal samples)
+        elif null_fields(data) and not args.skip_labkey:
+            missing_fields = null_fields(data)
+            print "ERROR\tNo {fields} value in Moka for NGSTestID {ngs_test_id}".format(fields=', '.join(missing_fields), ngs_test_id=ngs_test_id)
+        elif args.skip_labkey and remove_values(null_fields(data), 'DOB', 'NHSNumber'):
+            missing_fields = remove_values(null_fields(data), 'DOB', 'NHSNumber')
+            print "ERROR\tNo {fields} value in Moka for NGSTestID {ngs_test_id}".format(fields=', '.join(missing_fields), ngs_test_id=ngs_test_id)
+        # If block_auto_report value is non-zero, skip this sample and issue error message.
         elif data['block_auto_report']:
             print "ERROR\tAutomated reporting blocked in Moka for NGSTestID {ngs_test_id}".format(ngs_test_id=ngs_test_id)
         # Check that interpretation request ID is in expected format
@@ -335,7 +364,8 @@ def main():
         # Otherwise continue...
         else:
             # Convert DoB to string in format dd/mm/yyyy
-            data['DOB'] = data['DOB'].strftime(r'%d/%m/%Y')
+            if data['DOB']:
+                data['DOB'] = data['DOB'].strftime(r'%d/%m/%Y')
             # If skip_labkey flag not used, check DOB and NHSnumber in labkey and Geneworks match. Skip to next case if they don't.
             if args.skip_labkey:
                 pass
