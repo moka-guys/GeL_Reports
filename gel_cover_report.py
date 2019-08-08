@@ -465,28 +465,58 @@ def main():
                         today_date=datetime.datetime.now().strftime(r'%Y%m%d %H:%M:%S %p')
                         )
                 moka.execute_query(ngstestfile_insert_sql)
-                # Update the check2, reporter (check3) and authoriser (check4) to the logged in user, and status to Complete for NGSTest
-                ngstest_update_sql = (
-                    "UPDATE n SET n.Check2ID = c.Check1ID, n.Check2Date = '{today_date}', n.Check3ID = c.Check1ID, n.Check3Date = '{today_date}', n.Check4ID = c.Check1ID, n.Check4Date = '{today_date}', n.StatusID = 4 "
-                    "FROM NGSTest AS n, Checker AS c WHERE c.UserName = '{username}' AND n.NGSTestID = {ngs_test_id};"
-                    ).format(
-                        today_date=datetime.datetime.now().strftime(r'%Y%m%d %H:%M:%S %p'), 
-                        username=os.getenv('username'), 
-                        ngs_test_id=ngs_test_id
+                # If it's a negneg, update the check2, reporter (check3) and authoriser (check4) to the logged in user, and status to Complete for NGSTest and Patient, and generate email
+                if data['result_code']  == 1189679668:
+                    ngstest_update_sql = (
+                        "UPDATE n SET n.Check2ID = c.Check1ID, n.Check2Date = '{today_date}', n.Check3ID = c.Check1ID, n.Check3Date = '{today_date}', n.Check4ID = c.Check1ID, n.Check4Date = '{today_date}', n.StatusID = 4 "
+                        "FROM NGSTest AS n, Checker AS c WHERE c.UserName = '{username}' AND n.NGSTestID = {ngs_test_id};"
+                        ).format(
+                            today_date=datetime.datetime.now().strftime(r'%Y%m%d %H:%M:%S %p'), 
+                            username=os.getenv('username'), 
+                            ngs_test_id=ngs_test_id
+                            )
+                    moka.execute_query(ngstest_update_sql)  
+                    # Update the patient status to complete
+                    ngstest_update_sql = (
+                        "UPDATE Patients SET Patients.s_StatusOverall = 4 WHERE InternalPatientID = {internal_patient_id};".format(
+                            internal_patient_id=data['internal_patient_id']        
+                            )
                         )
-                moka.execute_query(ngstest_update_sql)
-                # Update the patient status to complete
-                ngstest_update_sql = (
-                    "UPDATE Patients SET Patients.s_StatusOverall = 4 WHERE InternalPatientID = {internal_patient_id};".format(
-                        internal_patient_id=data['internal_patient_id']        
+                    moka.execute_query(ngstest_update_sql)
+                    # Record status update in patient log
+                    patientlog_insert_sql = (
+                        "INSERT INTO PatientLog (InternalPatientID, LogEntry, Date, Login, PCName) "
+                        "VALUES ({internal_patient_id},  'NGS: Patient and test status automatically set to complete for 100k interpretation request {IRID}.', '{today_date}', '{username}', '{computer}');"
+                        ).format(
+                            internal_patient_id=data['internal_patient_id'],
+                            IRID=data['IRID'],
+                            today_date=datetime.datetime.now().strftime(r'%Y%m%d %H:%M:%S %p'),
+                            username=os.getenv('username'),
+                            computer=os.getenv('computername')
+                            )
+                    moka.execute_query(patientlog_insert_sql)
+                    # Create email body
+                    email_subject = "100,000 Genomes Project Result"
+                    email_body = (
+                        '<body style="font-family:Calibri,sans-serif;">'
+                        '<b>100,000 Genomes Project result from the Genetics Laboratory at Viapath - Guy\'s Hospital</b><br><br>'
+                        'PLEASE DO NOT REPLY TO THIS EMAIL ADDRESS WITH ENQUIRIES ABOUT REPORTS<br>'
+                        'FOR ALL ENQUIRIES PLEASE CONTACT THE LABORATORY USING <a href="mailto:DNADutyScientist@viapath.co.uk">DNADutyScientist@viapath.co.uk</a><br><br>'
+                        'Kind regards<br>'
+                        'Genetics Laboratory<br>'
+                        '5th Floor, Tower Wing<br>'
+                        'Guy\'s Hospital<br>'
+                        'London, SE1 9RT<br>'
+                        'United Kingdom<br><br>'
+                        'Tel: + 44 (0) 207 188 1709'
+                        '</body>'
                         )
-                    )
-
-                moka.execute_query(ngstest_update_sql)
-                # Record in patient log
+                    # Populate an outlook email addressed to clinican with results attached 
+                    generate_email(data['clinician_report_email'], email_subject, email_body, gel_combined_report)
+                # Record negative result letter generation in patient log
                 patientlog_insert_sql = (
                     "INSERT INTO PatientLog (InternalPatientID, LogEntry, Date, Login, PCName) "
-                    "VALUES ({internal_patient_id},  'NGS: Negative 100k results letter automatically generated for interpretation request {IRID}. Test and Patient status set to complete.', '{today_date}', '{username}', '{computer}');"
+                    "VALUES ({internal_patient_id},  'NGS: Negative 100k results letter automatically generated for 100k interpretation request {IRID}.', '{today_date}', '{username}', '{computer}');"
                     ).format(
                         internal_patient_id=data['internal_patient_id'],
                         IRID=data['IRID'],
@@ -495,24 +525,7 @@ def main():
                         computer=os.getenv('computername')
                         )
                 moka.execute_query(patientlog_insert_sql)				
-                # Create email body
-                email_subject = "100,000 Genomes Project Result"
-                email_body = (
-                    '<body style="font-family:Calibri,sans-serif;">'
-                    '<b>100,000 Genomes Project result from the Genetics Laboratory at Viapath - Guy\'s Hospital</b><br><br>'
-                    'PLEASE DO NOT REPLY TO THIS EMAIL ADDRESS WITH ENQUIRIES ABOUT REPORTS<br>'
-                    'FOR ALL ENQUIRIES PLEASE CONTACT THE LABORATORY USING <a href="mailto:DNADutyScientist@viapath.co.uk">DNADutyScientist@viapath.co.uk</a><br><br>'
-                    'Kind regards<br>'
-                    'Genetics Laboratory<br>'
-                    '5th Floor, Tower Wing<br>'
-                    'Guy\'s Hospital<br>'
-                    'London, SE1 9RT<br>'
-                    'United Kingdom<br><br>'
-                    'Tel: + 44 (0) 207 188 1709'
-                    '</body>'
-                    )
-                # Populate an outlook email addressed to clinican with results attached 
-                generate_email(data['clinician_report_email'], email_subject, email_body, gel_combined_report)
+
                 # Insert charge to Geneworks
                 g = GeLGeneworksCharge()
                 g.get_test_details(data['PRU'])
