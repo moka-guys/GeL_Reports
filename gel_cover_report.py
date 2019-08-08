@@ -363,9 +363,14 @@ def main():
             print "ERROR\tInterpretation request ID {irid} does not match pattern <id>-<version> for NGSTestID {ngs_test_id}".format(ngs_test_id=ngs_test_id, irid=data['IRID'])
         # Otherwise continue...
         else:
-            # Convert DoB to string in format dd/mm/yyyy
+            # Convert DoB (if there is one) to string in format dd/mm/yyyy
             if data['DOB']:
                 data['DOB'] = data['DOB'].strftime(r'%d/%m/%Y')
+            # If DoB or NHS number are missing, set the values to 'Not available' so that this is displayed on reports
+            if not data['DOB']:
+                data['DOB'] = 'Not available'
+            if not data['NHSNumber']:
+                data['NHSNumber'] = 'Not available'
             # If skip_labkey flag not used, check DOB and NHSnumber in labkey and Geneworks match. Skip to next case if they don't.
             if args.skip_labkey:
                 pass
@@ -396,7 +401,7 @@ def main():
                         ir_id=ir_id,
                         ir_version=ir_version,
                         output_path=r"\\gstt.local\shared\Genetics\Bioinformatics\GeL\technical_reports\ClinicalReport_{ir_id}-{ir_version}-1.pdf".format(ir_id=ir_id, ir_version=ir_version),
-                        header="{patient_name}    DoB {DOB}    PRU {PRU}    NHS {NHSNumber}".format(**data)
+                        header="{patient_name}    DoB {DOB}    PRU {PRU}    NHS Number {NHSNumber}".format(**data)
                         )
                 # Use BaseException so that SystemExit exceptions are caught
                 except BaseException as e:
