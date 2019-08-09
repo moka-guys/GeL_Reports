@@ -328,6 +328,7 @@ def remove_values(data_list, *args):
             data_list.remove(value)
     return data_list
 
+
 def main():
     # Output folder for combined reports
     gel_report_output_folder = r'\\gstt.local\apps\Moka\Files\ngs\{year}\{month}'.format(
@@ -414,7 +415,7 @@ def main():
                     'Whole genome sequencing has been completed by Genomics England and the primary analysis has not identified any underlying genetic cause of the clinical presentation.'
                 )
             elif data['result_code'] in [1189679670]:
-                # 1189679670 = Negative but with a previously reported variant i.e. No new findings
+                # 1189679670 = Previously reported variant i.e. No new findings from WGS
                 data['summary_of_findings'] = (
                     'Whole genome sequencing has been completed by Genomics England; please see the genome interpretation section for details of previously reported variant(s).'
                 )                
@@ -472,7 +473,7 @@ def main():
                         "FROM NGSTest AS n, Checker AS c WHERE c.UserName = '{username}' AND n.NGSTestID = {ngs_test_id};"
                         ).format(
                             today_date=datetime.datetime.now().strftime(r'%Y%m%d %H:%M:%S %p'), 
-                            username=os.getenv('username'), 
+                            username=os.getenv('username'),
                             ngs_test_id=ngs_test_id
                             )
                     moka.execute_query(ngstest_update_sql)  
@@ -513,10 +514,10 @@ def main():
                         )
                     # Populate an outlook email addressed to clinican with results attached 
                     generate_email(data['clinician_report_email'], email_subject, email_body, gel_combined_report)
-                # Record negative result letter generation in patient log
+                # Record result letter generation in patient log
                 patientlog_insert_sql = (
                     "INSERT INTO PatientLog (InternalPatientID, LogEntry, Date, Login, PCName) "
-                    "VALUES ({internal_patient_id},  'NGS: Negative 100k results letter automatically generated for 100k interpretation request {IRID}.', '{today_date}', '{username}', '{computer}');"
+                    "VALUES ({internal_patient_id},  'NGS: 100k results letter automatically generated for 100k interpretation request {IRID}.', '{today_date}', '{username}', '{computer}');"
                     ).format(
                         internal_patient_id=data['internal_patient_id'],
                         IRID=data['IRID'],
@@ -524,8 +525,7 @@ def main():
                         username=os.getenv('username'),
                         computer=os.getenv('computername')
                         )
-                moka.execute_query(patientlog_insert_sql)				
-
+                moka.execute_query(patientlog_insert_sql)
                 # Insert charge to Geneworks
                 g = GeLGeneworksCharge()
                 g.get_test_details(data['PRU'])
