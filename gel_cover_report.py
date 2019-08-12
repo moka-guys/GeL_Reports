@@ -1,5 +1,5 @@
 """
-v1.6 - AB 2019/01/22
+v1.7 - AB 2019/08/02
 Requirements:
     ODBC connection to Moka
     Python 2.7
@@ -8,8 +8,8 @@ Requirements:
     PyPDF2
     jinja2
 
-usage: gel_cover_report.py [-h] -n NGSTestID [NGSTestID ...] [--submit_exit_q]
-                           [--download_summary]
+usage: gel_cover_report.py [-h] -n NGSTestID [NGSTestID ...] [--skip_labkey]
+                           [--submit_exit_q] [--download_summary]
 
 Creates cover page for GeL results and attaches to report provided by GeL
 
@@ -17,6 +17,8 @@ optional arguments:
   -h, --help            show this help message and exit
   -n NGSTestID [NGSTestID ...]
                         Moka NGSTestID from NGSTest table
+  --skip_labkey         Optional flag to skip the check that DOB and NHS
+                        number in LIMS match labkey before reporting.
   --submit_exit_q       Optional flag to submit a negneg clinical report and
                         exit questionnaire automatically to CIP-API
   --download_summary    Optional flag to download summary of findings
@@ -53,6 +55,7 @@ def process_arguments():
     # Define the arguments that will be taken. nargs='+' allows multiple NGSTestIDs from NGSTest table in Moka can be passed as arguments.
     # action='store_true' makes the argument into a boolean flag (i.e. if it is used, it will be set to true, if it isn't used, it will be set to false)
     parser.add_argument('-n', metavar='NGSTestID', required=True, type=int, nargs='+', help='Moka NGSTestID from NGSTest table')
+    parser.add_argument('--skip_labkey', action='store_true', help=r'Optional flag to skip the check that DOB and NHS number in LIMS match labkey before reporting.')
     parser.add_argument('--submit_exit_q', action='store_true', help=r'Optional flag to submit a negneg clinical report and exit questionnaire automatically to CIP-API')
     parser.add_argument('--download_summary', action='store_true', help=r'Optional flag to download summary of findings automatically from CIP-API to P:\Bioinformatics\GeL\technical_reports')
     # Return the arguments
@@ -224,7 +227,7 @@ class MokaQueryExecuter(object):
                 'internal_patient_id': row.InternalPatientID,
                 'patient_name': '{first_name} {last_name}'.format(first_name=row.FirstName, last_name=row.LastName),
                 'sex': row.Gender,
-                'DOB': row.DoB.strftime(r'%d/%m/%Y'), # Extract date from datetime field in format dd/mm/yyyy
+                'DOB': row.DoB,
                 'NHSNumber': row.NHSNo,
                 'PRU': row.PatientTrustID,
                 'GELID': row.GELProbandID,
@@ -292,10 +295,39 @@ def labkey_geneworks_data_match(gel_id, date_of_birth, nhsnumber):
     except BaseException as e:
         print "ERROR\tFollowing error encountered getting demographics from labkey for participant ID {gel_id}: {e}".format(gel_id=gel_id, e=e)
         return False
-    if (labkey_data.dob == date_of_birth) and (labkey_data.nhsid == nhsnumber):
+    if (labkey_data.dob == date_of_birth) and (labkey_data.nhsid.replace(" ", "") == nhsnumber.replace(" ", "")):
         return True
     else:
         return False 
+
+
+def null_fields(data_dict):
+    '''
+    Args:
+        Dictionary
+    Returns: 
+        List of field names containing Null (None) values  
+    '''
+    null_field_list = []
+    for field, value in data_dict.iteritems():
+        if value == None:
+            null_field_list.append(field)
+    return null_field_list
+
+
+def remove_values(data_list, *args):
+    '''
+    Args:
+        List containing data
+        Values to be removed from list
+    Returns:
+        List with values removed
+    '''
+    for value in args:
+        if value in data_list:
+            data_list.remove(value)
+    return data_list
+
 
 def main():
     # Output folder for combined reports
@@ -316,24 +348,36 @@ def main():
         # If no data are returned, print an error message
         if not data:
             print 'ERROR\tNo results returned from Moka data query for NGSTestID {ngs_test_id}. Check there are records in all inner joined tables (eg clinician address in checker table)'.format(ngs_test_id=ngs_test_id)
-        # identify any missing values. if any of the values in the dict are Null (None)
-        elif None in data.values():
-            # loop through each key
-            for field in data:
-                # if the value is none
-                if not data[field]:
-                    # print the missing field.
-                    print "ERROR\tNo {field} value in Moka for NGSTestID {ngs_test_id}".format(field=field, ngs_test_id=ngs_test_id)
+        # Check for any missing fields (Nulls) in the returned data. Error and skip this sample if required fields are missing.
+        # If the skip_labkey flag has been used, we don't need to worry about missing DOB or NHS number (which are sometimes missing for e.g. fetal samples)
+        elif null_fields(data) and not args.skip_labkey:
+            missing_fields = null_fields(data)
+            print "ERROR\tNo {fields} value in Moka for NGSTestID {ngs_test_id}".format(fields=', '.join(missing_fields), ngs_test_id=ngs_test_id)
+        elif args.skip_labkey and remove_values(null_fields(data), 'DOB', 'NHSNumber'):
+            missing_fields = remove_values(null_fields(data), 'DOB', 'NHSNumber')
+            print "ERROR\tNo {fields} value in Moka for NGSTestID {ngs_test_id}".format(fields=', '.join(missing_fields), ngs_test_id=ngs_test_id)
+        # If block_auto_report value is non-zero, skip this sample and issue error message.
         elif data['block_auto_report']:
             print "ERROR\tAutomated reporting blocked in Moka for NGSTestID {ngs_test_id}".format(ngs_test_id=ngs_test_id)
         # Check that interpretation request ID is in expected format
         elif not re.search("^\d+-\d+$", data['IRID']):
             print "ERROR\tInterpretation request ID {irid} does not match pattern <id>-<version> for NGSTestID {ngs_test_id}".format(ngs_test_id=ngs_test_id, irid=data['IRID'])
-        # Check DOB and NHSnumber in labkey and Geneworks match
-        elif not labkey_geneworks_data_match(data['GELID'], data['DOB'], data['NHSNumber']):
-            print 'ERROR\tMoka demographics for NGSTestID {ngs_test_id} do not match LabKey data.'.format(ngs_test_id=ngs_test_id)
         # Otherwise continue...
         else:
+            # Convert DoB (if there is one) to string in format dd/mm/yyyy
+            if data['DOB']:
+                data['DOB'] = data['DOB'].strftime(r'%d/%m/%Y')
+            # If DoB or NHS number are missing, set the values to 'Not available' so that this is displayed on reports
+            if not data['DOB']:
+                data['DOB'] = 'Not available'
+            if not data['NHSNumber']:
+                data['NHSNumber'] = 'Not available'
+            # If skip_labkey flag not used, check DOB and NHSnumber in labkey and Geneworks match. Skip to next case if they don't.
+            if args.skip_labkey:
+                pass
+            elif not labkey_geneworks_data_match(data['GELID'], data['DOB'], data['NHSNumber']):
+                print 'ERROR\tMoka demographics for NGSTestID {ngs_test_id} do not match LabKey data.'.format(ngs_test_id=ngs_test_id)
+                continue
             # If submit_exit_q flag is used, call script to submit a negneg clinical report and exit questionnaire to the CIP-API
             # This shouldn't be used if either a summary of findings or exit questionnaire has already be created for this case (will fail if so)
             if args.submit_exit_q:
@@ -358,7 +402,7 @@ def main():
                         ir_id=ir_id,
                         ir_version=ir_version,
                         output_path=r"\\gstt.local\shared\Genetics\Bioinformatics\GeL\technical_reports\ClinicalReport_{ir_id}-{ir_version}-1.pdf".format(ir_id=ir_id, ir_version=ir_version),
-                        header="{patient_name}    DoB {DOB}    PRU {PRU}    NHS {NHSNumber}".format(**data)
+                        header="{patient_name}    DoB {DOB}    PRU {PRU}    NHS Number {NHSNumber}".format(**data)
                         )
                 # Use BaseException so that SystemExit exceptions are caught
                 except BaseException as e:
@@ -371,7 +415,7 @@ def main():
                     'Whole genome sequencing has been completed by Genomics England and the primary analysis has not identified any underlying genetic cause of the clinical presentation.'
                 )
             elif data['result_code'] in [1189679670]:
-                # 1189679670 = Negative but with a previously reported variant i.e. No new findings
+                # 1189679670 = Previously reported variant i.e. No new findings from WGS
                 data['summary_of_findings'] = (
                     'Whole genome sequencing has been completed by Genomics England; please see the genome interpretation section for details of previously reported variant(s).'
                 )                
@@ -422,28 +466,58 @@ def main():
                         today_date=datetime.datetime.now().strftime(r'%Y%m%d %H:%M:%S %p')
                         )
                 moka.execute_query(ngstestfile_insert_sql)
-                # Update the check2, reporter (check3) and authoriser (check4) to the logged in user, and status to Complete for NGSTest
-                ngstest_update_sql = (
-                    "UPDATE n SET n.Check2ID = c.Check1ID, n.Check2Date = '{today_date}', n.Check3ID = c.Check1ID, n.Check3Date = '{today_date}', n.Check4ID = c.Check1ID, n.Check4Date = '{today_date}', n.StatusID = 4 "
-                    "FROM NGSTest AS n, Checker AS c WHERE c.UserName = '{username}' AND n.NGSTestID = {ngs_test_id};"
-                    ).format(
-                        today_date=datetime.datetime.now().strftime(r'%Y%m%d %H:%M:%S %p'), 
-                        username=os.getenv('username'), 
-                        ngs_test_id=ngs_test_id
+                # If it's a negneg, update the check2, reporter (check3) and authoriser (check4) to the logged in user, and status to Complete for NGSTest and Patient, and generate email
+                if data['result_code']  == 1189679668:
+                    ngstest_update_sql = (
+                        "UPDATE n SET n.Check2ID = c.Check1ID, n.Check2Date = '{today_date}', n.Check3ID = c.Check1ID, n.Check3Date = '{today_date}', n.Check4ID = c.Check1ID, n.Check4Date = '{today_date}', n.StatusID = 4 "
+                        "FROM NGSTest AS n, Checker AS c WHERE c.UserName = '{username}' AND n.NGSTestID = {ngs_test_id};"
+                        ).format(
+                            today_date=datetime.datetime.now().strftime(r'%Y%m%d %H:%M:%S %p'), 
+                            username=os.getenv('username'),
+                            ngs_test_id=ngs_test_id
+                            )
+                    moka.execute_query(ngstest_update_sql)  
+                    # Update the patient status to complete
+                    ngstest_update_sql = (
+                        "UPDATE Patients SET Patients.s_StatusOverall = 4 WHERE InternalPatientID = {internal_patient_id};".format(
+                            internal_patient_id=data['internal_patient_id']        
+                            )
                         )
-                moka.execute_query(ngstest_update_sql)
-                # Update the patient status to complete
-                ngstest_update_sql = (
-                    "UPDATE Patients SET Patients.s_StatusOverall = 4 WHERE InternalPatientID = {internal_patient_id};".format(
-                        internal_patient_id=data['internal_patient_id']        
+                    moka.execute_query(ngstest_update_sql)
+                    # Record status update in patient log
+                    patientlog_insert_sql = (
+                        "INSERT INTO PatientLog (InternalPatientID, LogEntry, Date, Login, PCName) "
+                        "VALUES ({internal_patient_id},  'NGS: Patient and test status automatically set to complete for 100k interpretation request {IRID}.', '{today_date}', '{username}', '{computer}');"
+                        ).format(
+                            internal_patient_id=data['internal_patient_id'],
+                            IRID=data['IRID'],
+                            today_date=datetime.datetime.now().strftime(r'%Y%m%d %H:%M:%S %p'),
+                            username=os.getenv('username'),
+                            computer=os.getenv('computername')
+                            )
+                    moka.execute_query(patientlog_insert_sql)
+                    # Create email body
+                    email_subject = "100,000 Genomes Project Result"
+                    email_body = (
+                        '<body style="font-family:Calibri,sans-serif;">'
+                        '<b>100,000 Genomes Project result from the Genetics Laboratory at Viapath - Guy\'s Hospital</b><br><br>'
+                        'PLEASE DO NOT REPLY TO THIS EMAIL ADDRESS WITH ENQUIRIES ABOUT REPORTS<br>'
+                        'FOR ALL ENQUIRIES PLEASE CONTACT THE LABORATORY USING <a href="mailto:DNADutyScientist@viapath.co.uk">DNADutyScientist@viapath.co.uk</a><br><br>'
+                        'Kind regards<br>'
+                        'Genetics Laboratory<br>'
+                        '5th Floor, Tower Wing<br>'
+                        'Guy\'s Hospital<br>'
+                        'London, SE1 9RT<br>'
+                        'United Kingdom<br><br>'
+                        'Tel: + 44 (0) 207 188 1709'
+                        '</body>'
                         )
-                    )
-
-                moka.execute_query(ngstest_update_sql)
-                # Record in patient log
+                    # Populate an outlook email addressed to clinican with results attached 
+                    generate_email(data['clinician_report_email'], email_subject, email_body, gel_combined_report)
+                # Record result letter generation in patient log
                 patientlog_insert_sql = (
                     "INSERT INTO PatientLog (InternalPatientID, LogEntry, Date, Login, PCName) "
-                    "VALUES ({internal_patient_id},  'NGS: Negative 100k results letter automatically generated for interpretation request {IRID}. Test and Patient status set to complete.', '{today_date}', '{username}', '{computer}');"
+                    "VALUES ({internal_patient_id},  'NGS: 100k results letter automatically generated for 100k interpretation request {IRID}.', '{today_date}', '{username}', '{computer}');"
                     ).format(
                         internal_patient_id=data['internal_patient_id'],
                         IRID=data['IRID'],
@@ -451,25 +525,7 @@ def main():
                         username=os.getenv('username'),
                         computer=os.getenv('computername')
                         )
-                moka.execute_query(patientlog_insert_sql)				
-                # Create email body
-                email_subject = "100,000 Genomes Project Result"
-                email_body = (
-                    '<body style="font-family:Calibri,sans-serif;">'
-                    '<b>100,000 Genomes Project result from the Genetics Laboratory at Viapath - Guy\'s Hospital</b><br><br>'
-                    'PLEASE DO NOT REPLY TO THIS EMAIL ADDRESS WITH ENQUIRIES ABOUT REPORTS<br>'
-                    'FOR ALL ENQUIRIES PLEASE CONTACT THE LABORATORY USING <a href="mailto:DNADutyScientist@viapath.co.uk">DNADutyScientist@viapath.co.uk</a><br><br>'
-                    'Kind regards<br>'
-                    'Genetics Laboratory<br>'
-                    '5th Floor, Tower Wing<br>'
-                    'Guy\'s Hospital<br>'
-                    'London, SE1 9RT<br>'
-                    'United Kingdom<br><br>'
-                    'Tel: + 44 (0) 207 188 1709'
-                    '</body>'
-                    )
-                # Populate an outlook email addressed to clinican with results attached 
-                generate_email(data['clinician_report_email'], email_subject, email_body, gel_combined_report)
+                moka.execute_query(patientlog_insert_sql)
                 # Insert charge to Geneworks
                 g = GeLGeneworksCharge()
                 g.get_test_details(data['PRU'])
