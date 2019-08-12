@@ -34,11 +34,14 @@ The script is called by passing any number of NGS test IDs as input arguments.
 If there is an issue with a case, an error message will be printed to terminal and the script will simply skip to the next case. This is to prevent the whole batch failing when there's an issue with one individual case. It's therefore important to check the output to avoid cases being missed.
 
 By default the script will check that the patient's DoB and NHS number in labkey and Geneworks match. If they don't (or are missing) you
-can use the --skip_labkey flag to skip this step, however you must manually check that patient details are correct (in case the 100K participant ID is recorded incorrectly in Geneworks).
+can use the `-skip_labkey` flag to skip this step, however you must manually check that patient details are correct (in case the 100K participant ID is recorded incorrectly in Geneworks).
+
+By default this script will not work for any case where automated reporting has been blocked in Moka (indicated by a non-zero value in the BlockAutomatedReporting in the dbo.NGSTest table). To override this, you can use the `--ignore_block` flag.
 
 ```
 usage: gel_cover_report.py [-h] -n NGSTestID [NGSTestID ...] [--skip_labkey]
-                           [--submit_exit_q] [--download_summary]
+                           [--ignore_block] [--submit_exit_q]
+                           [--download_summary]
 
 Creates cover page for GeL results and attaches to report provided by GeL
 
@@ -48,6 +51,7 @@ optional arguments:
                         Moka NGSTestID from NGSTest table
   --skip_labkey         Optional flag to skip the check that DOB and NHS
                         number in LIMS match labkey before reporting.
+  --ignore_block        Optional flag to allow reporting of blocked cases.
   --submit_exit_q       Optional flag to submit a negneg clinical report and
                         exit questionnaire automatically to CIP-API
   --download_summary    Optional flag to download summary of findings

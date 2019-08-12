@@ -9,7 +9,8 @@ Requirements:
     jinja2
 
 usage: gel_cover_report.py [-h] -n NGSTestID [NGSTestID ...] [--skip_labkey]
-                           [--submit_exit_q] [--download_summary]
+                           [--ignore_block] [--submit_exit_q]
+                           [--download_summary]
 
 Creates cover page for GeL results and attaches to report provided by GeL
 
@@ -19,6 +20,7 @@ optional arguments:
                         Moka NGSTestID from NGSTest table
   --skip_labkey         Optional flag to skip the check that DOB and NHS
                         number in LIMS match labkey before reporting.
+  --ignore_block        Optional flag to allow reporting of blocked cases.
   --submit_exit_q       Optional flag to submit a negneg clinical report and
                         exit questionnaire automatically to CIP-API
   --download_summary    Optional flag to download summary of findings
@@ -56,6 +58,7 @@ def process_arguments():
     # action='store_true' makes the argument into a boolean flag (i.e. if it is used, it will be set to true, if it isn't used, it will be set to false)
     parser.add_argument('-n', metavar='NGSTestID', required=True, type=int, nargs='+', help='Moka NGSTestID from NGSTest table')
     parser.add_argument('--skip_labkey', action='store_true', help=r'Optional flag to skip the check that DOB and NHS number in LIMS match labkey before reporting.')
+    parser.add_argument('--ignore_block', action='store_true', help=r'Optional flag to allow reporting of blocked cases.')
     parser.add_argument('--submit_exit_q', action='store_true', help=r'Optional flag to submit a negneg clinical report and exit questionnaire automatically to CIP-API')
     parser.add_argument('--download_summary', action='store_true', help=r'Optional flag to download summary of findings automatically from CIP-API to P:\Bioinformatics\GeL\technical_reports')
     # Return the arguments
@@ -357,7 +360,7 @@ def main():
             missing_fields = remove_values(null_fields(data), 'DOB', 'NHSNumber')
             print "ERROR\tNo {fields} value in Moka for NGSTestID {ngs_test_id}".format(fields=', '.join(missing_fields), ngs_test_id=ngs_test_id)
         # If block_auto_report value is non-zero, skip this sample and issue error message.
-        elif data['block_auto_report']:
+        elif data['block_auto_report'] and not args.ignore_block:
             print "ERROR\tAutomated reporting blocked in Moka for NGSTestID {ngs_test_id}".format(ngs_test_id=ngs_test_id)
         # Check that interpretation request ID is in expected format
         elif not re.search("^\d+-\d+$", data['IRID']):
