@@ -19,8 +19,12 @@ optional arguments:
   -n NGSTestID [NGSTestID ...]
                         Moka NGSTestID from NGSTest table
   --skip_labkey         Optional flag to skip the check that DOB and NHS
-                        number in LIMS match labkey before reporting.
-  --ignore_block        Optional flag to allow reporting of blocked cases.
+                        number in LIMS match labkey before reporting. This can
+                        also be used for cases where DOB/NHS number is
+                        missing.
+  --ignore_block        Optional flag to allow reporting of cases where
+                        automated reporting in blocked in Moka. NOTE
+                        unblocking cases in Moka is preferable to using this.
   --submit_exit_q       Optional flag to submit a negneg clinical report and
                         exit questionnaire automatically to CIP-API
   --download_summary    Optional flag to download summary of findings
@@ -57,8 +61,16 @@ def process_arguments():
     # Define the arguments that will be taken. nargs='+' allows multiple NGSTestIDs from NGSTest table in Moka can be passed as arguments.
     # action='store_true' makes the argument into a boolean flag (i.e. if it is used, it will be set to true, if it isn't used, it will be set to false)
     parser.add_argument('-n', metavar='NGSTestID', required=True, type=int, nargs='+', help='Moka NGSTestID from NGSTest table')
-    parser.add_argument('--skip_labkey', action='store_true', help=r'Optional flag to skip the check that DOB and NHS number in LIMS match labkey before reporting.')
-    parser.add_argument('--ignore_block', action='store_true', help=r'Optional flag to allow reporting of blocked cases.')
+    parser.add_argument(
+            '--skip_labkey',
+            action='store_true',
+            help=r'Optional flag to skip the check that DOB and NHS number in LIMS match labkey before reporting. This can also be used for cases where DOB/NHS number is missing.'
+        )
+    parser.add_argument(
+            '--ignore_block',
+            action='store_true',
+            help=r'Optional flag to allow reporting of cases where automated reporting in blocked in Moka. NOTE unblocking cases in Moka is preferable to using this.'
+        )
     parser.add_argument('--submit_exit_q', action='store_true', help=r'Optional flag to submit a negneg clinical report and exit questionnaire automatically to CIP-API')
     parser.add_argument('--download_summary', action='store_true', help=r'Optional flag to download summary of findings automatically from CIP-API to P:\Bioinformatics\GeL\technical_reports')
     # Return the arguments
@@ -127,7 +139,7 @@ class GeLGeneworksCharge(object):
         elif len(rows) > 1:
             print "ERROR\tMultiple GeL tests found in Geneworks for {pru}.".format(pru=pru)
 
-    def insert_charge(self):
+    def insert_charge(self, test_type, cost):
         """
         Inserts GeL charge to GeneWorks for given PRU
         """
@@ -155,8 +167,8 @@ class GeLGeneworksCharge(object):
                 '@CostTypeID = NULL, '
                 '@Destination = NULL, '
                 '@DateReported = @timestamp, '
-                '@TestType = N\'GEL NEG\', '
-                '@Cost = 150, '
+                '@TestType = N\'{test_type}\', '
+                '@Cost = {cost}, '
                 '@DNAUnitsSample = NULL, '
                 '@DNAUnitsAnalysis = NULL, '
                 '@DNAUnitsReport = NULL, '
@@ -169,7 +181,9 @@ class GeLGeneworksCharge(object):
                 'SELECT @RecordNo as record_no;'
             ).format(
                 specimen_id=self.specimen_id, 
-                test_id=self.test_id
+                test_id=self.test_id,
+                test_type=test_type,
+                cost=cost
                 )            
             try:
                 # Insert the charge and capture the returned record number
@@ -211,7 +225,7 @@ class MokaQueryExecuter(object):
         data_sql = (
             'SELECT NGSTest.NGSTestID, NGSTest.BlockAutomatedReporting, NGSTest.InternalPatientID, NGSTest.ResultCode, Checker.Name AS clinician_name, Checker.ReportEmail, Item_Address.Item AS clinician_address, '
             '"gwv-patientlinked".FirstName, "gwv-patientlinked".LastName, "gwv-patientlinked".DoB, "gwv-patientlinked".Gender, "gwv-patientlinked".NHSNo, '
-            '"gwv-patientlinked".PatientTrustID, NGSTest.GELProbandID, NGSTest.IRID '
+            '"gwv-patientlinked".PatientTrustID, NGSTest.GELProbandID, NGSTest.IRID, Patients.s_StatusOverall '
             'FROM (((NGSTest INNER JOIN Patients ON NGSTest.InternalPatientID = Patients.InternalPatientID) '
             'INNER JOIN "gwv-patientlinked" ON "gwv-patientlinked".PatientTrustID = Patients.PatientID) INNER JOIN Checker ON NGSTest.BookBy = Checker.Check1ID) '
             'INNER JOIN Item AS Item_Address ON Checker.Address = Item_Address.ItemID '
@@ -236,7 +250,8 @@ class MokaQueryExecuter(object):
                 'GELID': row.GELProbandID,
                 'IRID': row.IRID,
                 'date_reported': datetime.datetime.now().strftime(r'%d/%m/%Y'), # Current date in format dd/mm/yyyy
-                'result_code': row.ResultCode
+                'result_code': row.ResultCode,
+                'patient_status_id': row.s_StatusOverall
             }
             # If None has been returned for gender (because there isn't one in geneworks) change value to 'Unknown'
             if not data['sex']: 
@@ -479,18 +494,11 @@ def main():
                             username=os.getenv('username'),
                             ngs_test_id=ngs_test_id
                             )
-                    moka.execute_query(ngstest_update_sql)  
-                    # Update the patient status to complete
-                    ngstest_update_sql = (
-                        "UPDATE Patients SET Patients.s_StatusOverall = 4 WHERE InternalPatientID = {internal_patient_id};".format(
-                            internal_patient_id=data['internal_patient_id']        
-                            )
-                        )
                     moka.execute_query(ngstest_update_sql)
-                    # Record status update in patient log
+                    # Record test status update in patient log
                     patientlog_insert_sql = (
                         "INSERT INTO PatientLog (InternalPatientID, LogEntry, Date, Login, PCName) "
-                        "VALUES ({internal_patient_id},  'NGS: Patient and test status automatically set to complete for 100k interpretation request {IRID}.', '{today_date}', '{username}', '{computer}');"
+                        "VALUES ({internal_patient_id},  'NGS: Test status automatically set to complete for 100k interpretation request {IRID}.', '{today_date}', '{username}', '{computer}');"
                         ).format(
                             internal_patient_id=data['internal_patient_id'],
                             IRID=data['IRID'],
@@ -499,6 +507,26 @@ def main():
                             computer=os.getenv('computername')
                             )
                     moka.execute_query(patientlog_insert_sql)
+                    # Update the patient status to complete. Only do this if patient status is currently 100K, to prevent interfering with any parallel testing.
+                    if data['patient_status_id'] == 1202218839:
+                        ngstest_update_sql = (
+                            "UPDATE Patients SET Patients.s_StatusOverall = 4 WHERE InternalPatientID = {internal_patient_id};".format(
+                                internal_patient_id=data['internal_patient_id']    
+                                )
+                            )
+                        moka.execute_query(ngstest_update_sql)
+                        # Record status update in patient log
+                        patientlog_insert_sql = (
+                            "INSERT INTO PatientLog (InternalPatientID, LogEntry, Date, Login, PCName) "
+                            "VALUES ({internal_patient_id},  'NGS: Patient status automatically set to complete for 100k interpretation request {IRID}.', '{today_date}', '{username}', '{computer}');"
+                            ).format(
+                                internal_patient_id=data['internal_patient_id'],
+                                IRID=data['IRID'],
+                                today_date=datetime.datetime.now().strftime(r'%Y%m%d %H:%M:%S %p'),
+                                username=os.getenv('username'),
+                                computer=os.getenv('computername')
+                                )
+                        moka.execute_query(patientlog_insert_sql)
                     # Create email body
                     email_subject = "100,000 Genomes Project Result"
                     email_body = (
@@ -532,7 +560,19 @@ def main():
                 # Insert charge to Geneworks
                 g = GeLGeneworksCharge()
                 g.get_test_details(data['PRU'])
-                g.insert_charge()
+                # If it's a neg or previously reported variant, submit neg cost code
+                if data['result_code'] in [1, 1189679670]:
+                    g.insert_charge('GEL NEG', 150)
+                # If it's a negneg, submit negneg cost code
+                elif data['result_code'] in [1189679668]:
+                    g.insert_charge('GEL NEGNEG', 150)
+                # If it's a different result code, warn user that charge couldn't be entered to geneworks
+                else:
+                    print 'ERROR\tUnable to enter charge to geneworks for IRID {ir_id} NGSTestID {ngs_test_id}. No charge associated with result code {result_code}'.format(
+                        ngs_test_id=ngs_test_id,
+                        ir_id=data['IRID'],
+                        result_code=data['result_code']
+                        )
                 # Print output location of reports
                 print 'SUCCESS\tGenerated report for IRID {ir_id} NGStestID {ngs_test_id} can be found in: {gel_report_output_folder}'.format(
                     ngs_test_id=ngs_test_id, 
