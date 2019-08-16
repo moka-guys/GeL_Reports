@@ -139,7 +139,7 @@ class GeLGeneworksCharge(object):
         elif len(rows) > 1:
             print "ERROR\tMultiple GeL tests found in Geneworks for {pru}.".format(pru=pru)
 
-    def insert_charge(self):
+    def insert_charge(self, test_type, cost):
         """
         Inserts GeL charge to GeneWorks for given PRU
         """
@@ -167,8 +167,8 @@ class GeLGeneworksCharge(object):
                 '@CostTypeID = NULL, '
                 '@Destination = NULL, '
                 '@DateReported = @timestamp, '
-                '@TestType = N\'GEL NEG\', '
-                '@Cost = 150, '
+                '@TestType = N\'{test_type}\', '
+                '@Cost = {cost}, '
                 '@DNAUnitsSample = NULL, '
                 '@DNAUnitsAnalysis = NULL, '
                 '@DNAUnitsReport = NULL, '
@@ -181,7 +181,9 @@ class GeLGeneworksCharge(object):
                 'SELECT @RecordNo as record_no;'
             ).format(
                 specimen_id=self.specimen_id, 
-                test_id=self.test_id
+                test_id=self.test_id,
+                test_type=test_type,
+                cost=cost
                 )            
             try:
                 # Insert the charge and capture the returned record number
@@ -558,7 +560,19 @@ def main():
                 # Insert charge to Geneworks
                 g = GeLGeneworksCharge()
                 g.get_test_details(data['PRU'])
-                g.insert_charge()
+                # If it's a neg or previously reported variant, submit neg cost code
+                if data['result_code'] in [1, 1189679670]:
+                    g.insert_charge('GEL NEG', 150)
+                # If it's a negneg, submit negneg cost code
+                elif data['result_code'] in [1189679668]:
+                    g.insert_charge('GEL NEGNEG', 150)
+                # If it's a different result code, warn user that charge couldn't be entered to geneworks
+                else:
+                    print 'ERROR\tUnable to enter charge to geneworks for IRID {ir_id} NGSTestID {ngs_test_id}. No charge associated with result code {result_code}'.format(
+                        ngs_test_id=ngs_test_id,
+                        ir_id=data['IRID'],
+                        result_code=data['result_code']
+                        )
                 # Print output location of reports
                 print 'SUCCESS\tGenerated report for IRID {ir_id} NGStestID {ngs_test_id} can be found in: {gel_report_output_folder}'.format(
                     ngs_test_id=ngs_test_id, 
