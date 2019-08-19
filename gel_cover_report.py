@@ -47,6 +47,7 @@ from jinja2 import Environment, FileSystemLoader
 from ssh_run_exit_questionnaire import ExitQuestionnaire_SSH
 from ssh_run_summary_findings import SummaryFindings_SSH
 from ssh_run_labkey import LabKey_SSH
+from generate_email import generate_email
 
 # Read config file (must be called config.ini and stored in same directory as script)
 config = ConfigParser()
@@ -75,22 +76,6 @@ def process_arguments():
     parser.add_argument('--download_summary', action='store_true', help=r'Optional flag to download summary of findings automatically from CIP-API to P:\Bioinformatics\GeL\technical_reports')
     # Return the arguments
     return parser.parse_args()
-
-def generate_email(to_address, subject, body, attachment):
-    '''
-    Populates an Outlook email and opens in separate window
-    '''
-    # Create Outlook message object
-    outlook = win32.Dispatch('outlook.application')
-    mail = outlook.CreateItem(0)
-    # Set email attributes
-    mail.To = to_address
-    mail.Subject = subject
-    mail.HtmlBody = body
-    # Attach file
-    mail.Attachments.Add(Source=attachment)
-    # Open the email in outlook. False argument prevents the Outlook window from blocking the script 
-    mail.Display(False)
 
 class GeLGeneworksCharge(object):
     def __init__(self):
@@ -544,7 +529,7 @@ def main():
                         '</body>'
                         )
                     # Populate an outlook email addressed to clinican with results attached 
-                    generate_email(data['clinician_report_email'], email_subject, email_body, gel_combined_report)
+                    generate_email(data['clinician_report_email'], email_subject, email_body, [gel_combined_report])
                 # Record result letter generation in patient log
                 patientlog_insert_sql = (
                     "INSERT INTO PatientLog (InternalPatientID, LogEntry, Date, Login, PCName) "
