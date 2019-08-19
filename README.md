@@ -1,6 +1,6 @@
 # GeL_Reports v1.7
 
-This script is used to attach a cover page to the summary of findings downloaded from GeL. It is used for cases that do not require a Geneworks report.
+The `gel_cover_report.py` script is used to attach a cover page to the summary of findings downloaded from GeL. It is used for cases that do not require a Geneworks report.
 
 Prior to running the script, the GeL case must be entered into Moka (using form `88005_GEL_InsertPatient` or the automed negneg scripts). If not using the --submit_exit_q and --download_summary flags, the case must be closed through the interpretation portal and the summary of findings PDF must be saved in `P:\Bioinformatics\GeL\technical_reports`.
 
@@ -15,6 +15,8 @@ This script performs the following steps:
 * Enters a charge into Geneworks
 * Pre-populates an Outlook email with report attached ready to be checked and sent to clinician.
 
+Note the final email step can be run on it's own using the `generate_email.py` script. (This is useful for when cover report generation and email sending need to happen at different times.)
+
 ## Usage
 
 Requirements:
@@ -28,6 +30,8 @@ Requirements:
     * jinja2
 
 Using the python installation at `S:\Genetics_Data2\Array\Software\Python\python.exe` will satisfy the above requirements.
+
+### `gel_cover_report.py`
 
 The script is called by passing any number of NGS test IDs as input arguments.
 
@@ -57,4 +61,24 @@ optional arguments:
   --download_summary    Optional flag to download summary of findings
                         automatically from CIP-API to
                         P:\Bioinformatics\GeL\technical_reports
+```
+
+### `generate_email.py`
+
+This script can be used standalone to populate an Outlook email with supplied values.
+
+```
+usage: generate_email.py [-h] -t TO -s SUBJECT -b BODY
+                         [-a ATTACHMENTS [ATTACHMENTS ...]]
+
+Generates an email and opens in Outlook
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -t TO, --to TO        Recipient email address
+  -s SUBJECT, --subject SUBJECT
+                        Subject line for email
+  -b BODY, --body BODY  Email body
+  -a ATTACHMENTS [ATTACHMENTS ...], --attachments ATTACHMENTS [ATTACHMENTS ...]
+                        File paths for attachments
 ```
