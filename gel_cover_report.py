@@ -550,7 +550,7 @@ def main():
                     g.insert_charge('GEL NEG', 150)
                 # If it's a negneg, submit negneg cost code
                 elif data['result_code'] in [1189679668]:
-                    g.insert_charge('GEL NEGNEG', 150)
+                    g.insert_charge('WGS No Variants', 71)
                 # If it's a different result code, warn user that charge couldn't be entered to geneworks
                 else:
                     print 'ERROR\tUnable to enter charge to geneworks for IRID {ir_id} NGSTestID {ngs_test_id}. No charge associated with result code {result_code}'.format(
