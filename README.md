@@ -1,4 +1,4 @@
-# GeL_Reports v1.7
+# GeL_Reports v1.8
 
 The `gel_cover_report.py` script is used to attach a cover page to the summary of findings downloaded from GeL. It is used for cases that do not require a Geneworks report.
 
