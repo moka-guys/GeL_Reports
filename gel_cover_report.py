@@ -545,11 +545,8 @@ def main():
                 # Insert charge to Geneworks
                 g = GeLGeneworksCharge()
                 g.get_test_details(data['PRU'])
-                # If it's a neg or previously reported variant, submit neg cost code
-                if data['result_code'] in [1, 1189679670]:
-                    g.insert_charge('GEL NEG', 150)
                 # If it's a negneg, submit negneg cost code
-                elif data['result_code'] in [1189679668]:
+                if data['result_code'] in [1189679668]:
                     g.insert_charge('WGS No Variants', 71)
                 # If it's a different result code, warn user that charge couldn't be entered to geneworks
                 else:
