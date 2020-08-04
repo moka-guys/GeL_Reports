@@ -404,7 +404,7 @@ def main():
                     SummaryFindings_SSH(
                         ir_id=ir_id,
                         ir_version=ir_version,
-                        output_path=r"\\gstt.local\shared\Genetics\Bioinformatics\GeL\technical_reports\ClinicalReport_{ir_id}-{ir_version}-1.pdf".format(ir_id=ir_id, ir_version=ir_version),
+                        output_path=r"\\gstt.local\shared\Genetics\Bioinformatics\GeL\technical_reports\Summary_of_Findings_{ir_id}-{ir_version}-1.pdf".format(ir_id=ir_id, ir_version=ir_version),
                         header="{patient_name}    DoB {DOB}    PRU {PRU}    NHS Number {NHSNumber}".format(**data)
                         )
                 # Use BaseException so that SystemExit exceptions are caught
@@ -433,7 +433,7 @@ def main():
             # Specify the path to the folder containing the technical reports downloaded from the interpretation portal
             gel_original_report_folder = r'\\gstt.local\shared\Genetics\Bioinformatics\GeL\technical_reports'
             # create a search pattern to identify the correct HTML report. Use single character wildcard as the verison of the report is not known
-            gel_original_report_search_name = "ClinicalReport_{ir_id}-?.pdf".format(ir_id=data['IRID'])
+            gel_original_report_search_name = "Summary_of_Findings_{ir_id}-?.pdf".format(ir_id=data['IRID'])
             # Specify the output path for the combined report, based on the GeL participant ID and the interpretation request ID retrieved from Moka
             gel_combined_report = r'{gel_report_output_folder}\{pru}_{proband_id}_{ir_id}_{date}.pdf'.format(
                     gel_report_output_folder=gel_report_output_folder,
