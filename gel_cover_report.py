@@ -421,7 +421,12 @@ def main():
                 # 1189679670 = Previously reported variant i.e. No new findings from WGS
                 data['summary_of_findings'] = (
                     'Whole genome sequencing has been completed by Genomics England; please see the genome interpretation section for details of previously reported variant(s).'
-                )                
+                )
+            elif data['result_code'] in [1189679598]:
+                #1189679598 = Other i.e complicated cases
+                data['summary_of_findings'] = (
+                    'Whole genome sequencing has been completed by Genomics England; please see the genome interpretation section for details.'
+                )
             else:
                 # If result code not known, print error and skip to the next case
                 print 'ERROR\tUnknown result code for NGSTestID {ngs_test_id}.'.format(ngs_test_id=ngs_test_id)
